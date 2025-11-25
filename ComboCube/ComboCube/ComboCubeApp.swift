@@ -1,12 +1,14 @@
 import SwiftUI
-import SwiftData
+import Combine
 
 @main
 struct ComboCubeApp: App {
+    @StateObject private var store = CubeStore()
+
     var body: some Scene {
         WindowGroup {
-            ComboListView()
+            ContentView()
+                .environmentObject(store)
         }
-        .modelContainer(for: [Combo.self, CubeTask.self])
     }
 }
