@@ -9,6 +9,9 @@ struct ComboCubeApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
+                .onAppear {
+                    store.loadDefaultCubes()
+                }
         }
     }
 }

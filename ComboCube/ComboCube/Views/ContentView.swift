@@ -2,53 +2,35 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var store = CubeStore()
-
-    // Grid layout
-    let columns: [GridItem] = [
-        GridItem(.flexible()),
-        GridItem(.flexible())
-    ]
+    @EnvironmentObject var store: CubeStore
 
     var body: some View {
-        NavigationView {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(store.cubes) { cube in
-                        CubeGridItemView(cube: cube)
-                    }
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
+                ForEach(store.cubes) { cube in
+                    CubeGridItemView(cube: cube)
                 }
-                .padding()
             }
-            .navigationTitle("Cubes")
-        }
-        .onAppear {
-            store.loadDefaultCubes() // 載入內建 combo & task
         }
     }
 }
 
 struct CubeGridItemView: View {
-    @ObservedObject var cube: Cube
+    let cube: Cube   // 直接使用 struct
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack {
             Text(cube.icon)
-                .font(.largeTitle)
             Text(cube.title)
-                .font(.headline)
-                .multilineTextAlignment(.center)
-            if let notes = cube.actionInfo.notes {
-                Text(notes)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            if cube.action.actionType == .combo {
+                Text("Combo with \(cube.action.cubeIDs?.count ?? 0) items")
+            } else {
+                Text(cube.notes ?? "")
             }
         }
         .padding()
-        .frame(maxWidth: .infinity)
         .background(Color(cube.backgroundColor))
         .cornerRadius(12)
-        .shadow(radius: 4)
     }
 }
 

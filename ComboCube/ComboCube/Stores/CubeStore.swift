@@ -14,7 +14,8 @@ class CubeStore: ObservableObject {
             title: title,
             icon: icon,
             backgroundColor: backgroundColor,
-            actionInfo: CubeAction(actionType: actionType, notes: notes)
+            action: CubeAction(actionType: actionType),
+            notes: notes
         )
         cubes.append(cube)
         return cube
@@ -25,12 +26,13 @@ class CubeStore: ObservableObject {
                       icon: String,
                       backgroundColor: String,
                       notes: String? = nil,
-                      itemIDs: [UUID]) -> Cube {
+                      cubeIDs: [UUID]) -> Cube {
         let cube = Cube(
             title: title,
             icon: icon,
             backgroundColor: backgroundColor,
-            actionInfo: CubeAction(actionType: .combo, cubeIDs: itemIDs, notes: notes)
+            action: CubeAction(actionType: .combo, cubeIDs: cubeIDs),
+            notes: notes
         )
         cubes.append(cube)
         return cube
@@ -46,8 +48,8 @@ class CubeStore: ObservableObject {
         let cadence = addItemCube(title: "踩踏節奏 95rpm", icon: "🎵", backgroundColor: "blue", notes: "效率訓練")
 
         // Combo cubes
-        addComboCube(title: "間歇訓練", icon: "⚡️", backgroundColor: "red", notes: "提升最大攝氧量與無氧耐力", itemIDs: [warmup.id, interval1.id, interval2.id])
-        addComboCube(title: "爬坡肌耐力", icon: "⛰️", backgroundColor: "green", notes: "增強腿部肌耐力", itemIDs: [warmup.id, climb.id])
-        addComboCube(title: "踩踏節奏提升", icon: "🎵", backgroundColor: "blue", notes: "提升踩踏順暢度與效率", itemIDs: [warmup.id, cadence.id])
+        addComboCube(title: "間歇訓練", icon: "⚡️", backgroundColor: "red", notes: "提升最大攝氧量與無氧耐力", cubeIDs: [warmup.id, interval1.id, interval2.id])
+        addComboCube(title: "爬坡肌耐力", icon: "⛰️", backgroundColor: "green", notes: "增強腿部肌耐力", cubeIDs: [warmup.id, climb.id])
+        addComboCube(title: "踩踏節奏提升", icon: "🎵", backgroundColor: "blue", notes: "提升踩踏順暢度與效率", cubeIDs: [warmup.id, cadence.id])
     }
 }
