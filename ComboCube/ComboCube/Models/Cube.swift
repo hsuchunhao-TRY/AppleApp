@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 
 enum CubeActionType: String {
     case combo
@@ -16,19 +15,11 @@ struct CubeAction {
     var cubeIDs: [UUID]? = nil             // combo 下的非 combo Cube 連結
 }
 
-class Cube: ObservableObject, Identifiable {
+struct Cube: Identifiable {
     var id = UUID()
-    @Published var title: String
-    @Published var icon: String
-    @Published var backgroundColor: String
-    @Published var action: CubeAction         // 改名 action
-    @Published var notes: String?             // 說明屬性
-    
-    init(title: String, icon: String, backgroundColor: String, action: CubeAction, notes: String? = nil) {
-        self.title = title
-        self.icon = icon
-        self.backgroundColor = backgroundColor
-        self.action = action
-        self.notes = notes
-    }
+    var title: String
+    var icon: String
+    var backgroundColor: String
+    var action: CubeAction
+    var notes: String?             // 說明屬性
 }
