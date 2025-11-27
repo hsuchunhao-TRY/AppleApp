@@ -1,25 +1,37 @@
+import SwiftData
 import Foundation
 
-enum CubeActionType: String {
-    case combo
-    case timer
-    case countdown
-    case repetitions
-    case none
-}
+@Model
+class Cube {
+    @Attribute(.unique) var id: UUID
+    @Attribute var title: String
+    @Attribute var icon: String
+    @Attribute var backgroundColor: String
+    @Attribute var notes: String?
 
-struct CubeAction {
-    var actionType: CubeActionType
-    var duration: TimeInterval? = nil      // 秒數，timer 或 countdown 用
-    var repetitions: Int? = nil            // 重複次數，repetitions 用
-    var cubeIDs: [UUID]? = nil             // combo 下的非 combo Cube 連結
-}
+    @Attribute var actionType: String
+    @Attribute var duration: TimeInterval?
+    @Attribute var repetitions: Int?
 
-struct Cube: Identifiable {
-    var id = UUID()
-    var title: String
-    var icon: String
-    var backgroundColor: String
-    var action: CubeAction
-    var notes: String?             // 說明屬性
+    // Combo children
+    @Relationship(deleteRule: .nullify) var children: [Cube] = []
+
+    init(
+        title: String,
+        icon: String,
+        backgroundColor: String,
+        notes: String? = nil,
+        actionType: String,
+        duration: TimeInterval? = nil,
+        repetitions: Int? = nil
+    ) {
+        self.id = UUID()
+        self.title = title
+        self.icon = icon
+        self.backgroundColor = backgroundColor
+        self.notes = notes
+        self.actionType = actionType
+        self.duration = duration
+        self.repetitions = repetitions
+    }
 }

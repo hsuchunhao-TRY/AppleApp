@@ -49,4 +49,13 @@ extension Color {
         default: self.init(r: 255, g: 255, b: 255) // 白色預設
         }
     }
+
+    // 自動判斷 HEX 或名稱
+    init(_ string: String) {
+        if string.hasPrefix("#") {
+            self.init(hex: string)
+        } else {
+            self.init(name: string)
+        }
+    }
 }

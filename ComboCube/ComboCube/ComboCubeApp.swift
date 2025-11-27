@@ -1,17 +1,14 @@
+// ComboCubeApp.swift
 import SwiftUI
-import Combine
+import SwiftData
+
 
 @main
 struct ComboCubeApp: App {
-    @StateObject private var store = CubeStore()
-
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(store)
-                .onAppear {
-                    store.loadDefaultCubes()
-                }
+                .modelContainer(for: Cube.self)
         }
     }
 }
