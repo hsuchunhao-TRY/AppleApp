@@ -12,7 +12,7 @@ struct ContentView: View {
     @State private var expandedComboIDs: Set<UUID> = []
 
     var combos: [Cube] {
-        allCubes.filter { $0.actionType == "combo" }
+        allCubes.filter { $0.type == .combo }
     }
 
     var body: some View {
@@ -80,62 +80,72 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
 }
 
 
+import SwiftUI
+import SwiftData
+
 // Combo + Task
 struct ComboWithTasksView: View {
     let combo: Cube
     let isExpanded: Bool
-//    @EnvironmentObject var comboStore: CubeStore
 
-    // 取得 Combo 的子項目
+
+    @State private var showEdit = false
+
     private var taskCubes: [Cube] {
         combo.children
-    }
-
-    private var totalDuration: TimeInterval {
-        taskCubes.reduce(0) { $0 + ($1.duration ?? 0) }
     }
 
     var body: some View {
         VStack(spacing: 8) {
 
-            // Combo 卡片
-            CubeStyleView(cube: combo, style: .basic)
-            CubeStyleView(cube: combo, style: .large)
-            CubeStyleView(cube: combo, style: .compact)
-            CubeStyleView(cube: combo, style: .detailed)
-            
-            // Task Cubes
+            // Combo 卡片 + Edit 按鈕
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 8) {
+                    CubeStyleView(cube: combo, style: .basic)
+                    CubeStyleView(cube: combo, style: .large)
+                    CubeStyleView(cube: combo, style: .compact)
+                    CubeStyleView(cube: combo, style: .detailed)
+                }
+
+                Button {
+                    showEdit = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .padding(8)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                        .shadow(radius: 1)
+                }
+                .padding(8)
+            }
+
+            // 展開顯示 Task Cubes
             if isExpanded {
                 VStack(spacing: 12) {
                     ForEach(Array(taskCubes.enumerated()), id: \.element.id) { index, itemCube in
-                        TaskCubeView(itemCube: itemCube, order: index + 1, backgroundColor: combo.backgroundColor)
+                        TaskCubeView(
+                            itemCube: itemCube,
+                            order: index + 1
+                        )
                     }
                 }
                 .padding(.top, 4)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+        .sheet(isPresented: $showEdit) {
+            CubeEditView(cube: combo)
+        }
         .animation(.easeInOut, value: isExpanded)
     }
+
 }
 
-// Task Cube + Timer
+// Task Cube
 struct TaskCubeView: View {
     let itemCube: Cube
     let order: Int
-    let backgroundColor: String
     let style: CubeStyle = .compact
-
-    @State private var remainingTime: TimeInterval
-    @State private var timerRunning = false
-    @State private var timer: Timer? = nil
-
-    init(itemCube: Cube, order: Int, backgroundColor: String) {
-        self.itemCube = itemCube
-        self.order = order
-        self.backgroundColor = backgroundColor
-        self._remainingTime = State(initialValue: itemCube.duration ?? 0)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -148,70 +158,10 @@ struct TaskCubeView: View {
                         .cornerRadius(6)
                         .padding(4)
                 }
-            
-            HStack(spacing: 12) {
-                Button(action: startTimer) {
-                    Text("開始")
-                        .font(.caption2)
-                        .padding(6)
-                        .background(Color.green.opacity(0.7))
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
-                }
-
-                Button(action: pauseTimer) {
-                    Text("暫停")
-                        .font(.caption2)
-                        .padding(6)
-                        .background(Color.yellow.opacity(0.7))
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
-                }
-
-                Button(action: stopTimer) {
-                    Text("停止")
-                        .font(.caption2)
-                        .padding(6)
-                        .background(Color.red.opacity(0.7))
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
-                }
-            }
         }
         .padding()
-        .background(Color(backgroundColor).opacity(0.2))
+        .background(Color(hex: itemCube.backgroundColor))  // <- 用 hex initializer
         .cornerRadius(12)
         .shadow(radius: 2)
-        .onDisappear { timer?.invalidate() }
-    }
-
-    // MARK: Timer Functions
-    func startTimer() {
-        guard !timerRunning else { return }
-        timerRunning = true
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            if remainingTime > 0 {
-                remainingTime -= 1
-            } else {
-                stopTimer()
-            }
-        }
-    }
-
-    func pauseTimer() {
-        timer?.invalidate()
-        timerRunning = false
-    }
-
-    func stopTimer() {
-        timer?.invalidate()
-        timerRunning = false
-        remainingTime = itemCube.duration ?? 0
-    }
-
-    func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
     }
 }

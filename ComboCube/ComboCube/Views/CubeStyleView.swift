@@ -59,7 +59,7 @@ private extension CubeStyleView {
         }
         .padding()
         .frame(maxWidth: .infinity, minHeight: 120)
-        .background(Color(cube.backgroundColor))
+        .background(Color(hex: cube.backgroundColor))
         .cornerRadius(12)
         .shadow(radius: 2)
     }
@@ -78,7 +78,7 @@ private extension CubeStyleView {
             Spacer()
         }
         .padding(10)
-        .background(Color(cube.backgroundColor).opacity(0.6))
+        .background(Color(hex: cube.backgroundColor).opacity(0.6))
         .cornerRadius(10)
     }
 }
@@ -110,7 +110,7 @@ private extension CubeStyleView {
             }
         }
         .padding()
-        .background(Color(cube.backgroundColor).opacity(0.9))
+        .background(Color(hex: cube.backgroundColor).opacity(0.9))
         .cornerRadius(14)
         .shadow(radius: 3)
     }
@@ -133,7 +133,7 @@ private extension CubeStyleView {
         }
         .padding(30)
         .frame(maxWidth: .infinity, minHeight: 160)
-        .background(Color(cube.backgroundColor))
+        .background(Color(hex: cube.backgroundColor))
         .cornerRadius(20)
         .shadow(radius: 4)
     }
