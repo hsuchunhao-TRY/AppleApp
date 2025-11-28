@@ -53,20 +53,20 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
         let cubes = try context.fetch(FetchDescriptor<Cube>())
         if cubes.isEmpty {
             // Task Cubes
-            let warmup = Cube(title: "熱身 10 分鐘", icon: "🔥", backgroundColor: "#FFA500", actionType: "timer", duration: 10*60)
-            let interval1 = Cube(title: "高強度間歇 1 分鐘", icon: "⚡️", backgroundColor: "#FF0000", actionType: "timer", duration: 1*60)
-            let interval2 = Cube(title: "低強度騎乘 10 分鐘", icon: "💨", backgroundColor: "#FFFF00", actionType: "timer", duration: 10*60)
-            let climb = Cube(title: "爬坡 6-10km", icon: "⛰️", backgroundColor: "#00FF00", actionType: "timer", duration: 20*60)
-            let cadence = Cube(title: "踩踏節奏 95rpm", icon: "🎵", backgroundColor: "#0000FF", actionType: "timer", duration: 15*60)
+            let warmup = Cube(title: "熱身 10 分鐘", icon: "🔥", backgroundColor: "#FFA500", actionType: .timer, duration: 10*60)
+            let interval1 = Cube(title: "高強度間歇 1 分鐘", icon: "⚡️", backgroundColor: "#FF0000", actionType: .timer, duration: 1*60)
+            let interval2 = Cube(title: "低強度騎乘 10 分鐘", icon: "💨", backgroundColor: "#FFFF00", actionType: .timer, duration: 10*60)
+            let climb = Cube(title: "爬坡 6-10km", icon: "⛰️", backgroundColor: "#00FF00", actionType: .timer, duration: 20*60)
+            let cadence = Cube(title: "踩踏節奏 95rpm", icon: "🎵", backgroundColor: "#0000FF", actionType: .timer, duration: 15*60)
 
             // Combo Cubes
-            let combo1 = Cube(title: "間歇訓練", icon: "⚡️", backgroundColor: "#FFBF00", actionType: "combo")
+            let combo1 = Cube(title: "間歇訓練", icon: "⚡️", backgroundColor: "#FFBF00", actionType: .combo)
             combo1.children.append(contentsOf: [warmup, interval1, interval2])
             
-            let combo2 = Cube(title: "爬坡肌耐力", icon: "⛰️", backgroundColor: "#919E71", actionType: "combo")
+            let combo2 = Cube(title: "爬坡肌耐力", icon: "⛰️", backgroundColor: "#919E71", actionType: .combo)
             combo2.children.append(contentsOf: [warmup, climb])
             
-            let combo3 = Cube(title: "踩踏節奏提升", icon: "🎵", backgroundColor: "#CAC5DD", actionType: "combo")
+            let combo3 = Cube(title: "踩踏節奏提升", icon: "🎵", backgroundColor: "#CAC5DD", actionType: .combo)
             combo3.children.append(contentsOf: [warmup, cadence])
 
             // 儲存

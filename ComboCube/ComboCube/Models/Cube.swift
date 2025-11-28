@@ -1,6 +1,20 @@
 import SwiftData
 import Foundation
 
+// MARK: - CubeActionType
+enum CubeActionType: String {
+    case combo
+    case timer
+    case countdown
+    case repetitions
+    case none
+
+    init(from rawValue: String) {
+        self = CubeActionType(rawValue: rawValue) ?? .none
+    }
+}
+
+// MARK: - Cube Model
 @Model
 class Cube {
     @Attribute(.unique) var id: UUID
@@ -16,12 +30,18 @@ class Cube {
     // Combo children
     @Relationship(deleteRule: .nullify) var children: [Cube] = []
 
+    // Swift 層用 enum
+    var type: CubeActionType {
+        get { CubeActionType(from: actionType) }
+        set { actionType = newValue.rawValue }
+    }
+    
     init(
         title: String,
         icon: String,
         backgroundColor: String,
         notes: String? = nil,
-        actionType: String,
+        actionType: CubeActionType,
         duration: TimeInterval? = nil,
         repetitions: Int? = nil
     ) {
@@ -30,7 +50,7 @@ class Cube {
         self.icon = icon
         self.backgroundColor = backgroundColor
         self.notes = notes
-        self.actionType = actionType
+        self.actionType = actionType.rawValue
         self.duration = duration
         self.repetitions = repetitions
     }
