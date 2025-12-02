@@ -1,14 +1,17 @@
 import SwiftUI
+import SwiftData
 
 enum CubeStyle {
-    case basic      // 目前使用中的樣式
-    case compact    // 小卡片
-    case detailed   // 含更多資訊
-    case large      // 大字版
-    // 你之後可以新增更多…
+    case basic
+    case compact
+    case detailed
+    case large
 }
 
 struct CubeStyleView: View {
+
+    @Environment(\.modelContext) private var context
+
     let cube: Cube
     let style: CubeStyle
 
@@ -16,13 +19,10 @@ struct CubeStyleView: View {
         switch style {
         case .basic:
             basicStyle
-
         case .compact:
             compactStyle
-
         case .detailed:
             detailedStyle
-
         case .large:
             largeStyle
         }
@@ -52,7 +52,7 @@ private extension CubeStyleView {
             }
 
             if let duration = cube.duration {
-                Text("\(Int(duration/60)) 分鐘")
+                Text("\(Int(duration / 60)) 分鐘")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -63,9 +63,7 @@ private extension CubeStyleView {
         .cornerRadius(12)
         .shadow(radius: 2)
     }
-}
 
-private extension CubeStyleView {
     var compactStyle: some View {
         HStack {
             Text(cube.icon)
@@ -81,9 +79,7 @@ private extension CubeStyleView {
         .background(Color(hex: cube.backgroundColor).opacity(0.6))
         .cornerRadius(10)
     }
-}
 
-private extension CubeStyleView {
     var detailedStyle: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -114,9 +110,7 @@ private extension CubeStyleView {
         .cornerRadius(14)
         .shadow(radius: 3)
     }
-}
 
-private extension CubeStyleView {
     var largeStyle: some View {
         VStack(spacing: 12) {
             Text(cube.icon)
@@ -126,7 +120,7 @@ private extension CubeStyleView {
                 .font(.system(size: 28, weight: .bold))
 
             if let duration = cube.duration {
-                Text("\(Int(duration/60)) 分鐘")
+                Text("\(Int(duration / 60)) 分鐘")
                     .font(.headline)
                     .foregroundColor(.secondary)
             }
