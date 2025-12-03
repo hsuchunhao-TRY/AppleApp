@@ -194,11 +194,10 @@ struct ComboDetailCardView: View {
                                 Text(child.icon)
                                 Text(child.title)
                                 Spacer()
-                                if let duration = child.duration {
-                                    Text("\(Int(duration / 60)) min")
+                                if child.duration > 0 {
+                                    Text("\(Int(child.duration / 60)) min")
                                         .foregroundColor(.secondary)
-                                }
-                            }
+                                }                            }
                             .padding(.vertical, 4)
                         }
                     }
@@ -244,7 +243,7 @@ struct TaskItem: Identifiable {
         self.icon = cube.icon
         self.title = cube.title
         self.duration = cube.duration
-        self.remaining = cube.duration ?? 0
+        self.remaining = cube.duration
         self.status = .notStarted
     }
 }
@@ -348,28 +347,59 @@ struct ComboDetailFullPageView: View {
     // MARK: - Helpers
     func startTask(at index: Int) {
         guard tasks.indices.contains(index) else { return }
-        
-        if tasks[index].status == .completed { return }
-        
-        if tasks[index].status == .inProgress {
-            tasks[index].status = .notStarted
+
+        // 取出 task（避免 SwiftUI mutation error）
+        var task = tasks[index]
+
+        // 狀態切換 Start / Pause
+        switch task.status {
+        case .completed:
             return
-        } else {
-            tasks[index].status = .inProgress
+
+        case .inProgress:
+            task.status = .notStarted   // 暫停後回到待機
+            tasks[index] = task
+            return
+
+        case .notStarted:
+            task.status = .inProgress
         }
-        
+
+        // 寫回 task（開始計時狀態）
+        tasks[index] = task
+
+        // 啟動 Timer
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
             DispatchQueue.main.async {
-                if tasks[index].remaining > 0 && tasks[index].status == .inProgress {
-                    tasks[index].remaining -= 1
+
+                // index 失效
+                guard tasks.indices.contains(index) else {
+                    timer.invalidate()
+                    return
+                }
+
+                var task = tasks[index]
+
+                // 如果離開 inProgress → 停止
+                guard task.status == .inProgress else {
+                    timer.invalidate()
+                    return
+                }
+
+                // 倒數邏輯
+                if task.remaining > 0 {
+                    task.remaining -= 1
                 } else {
-                    tasks[index].status = .completed
+                    task.status = .completed
                     timer.invalidate()
                 }
+
+                tasks[index] = task
             }
         }
     }
-    
+
+
     func timeString(from seconds: TimeInterval) -> String {
         let mins = Int(seconds) / 60
         let secs = Int(seconds) % 60
@@ -378,14 +408,110 @@ struct ComboDetailFullPageView: View {
 }
 
 
+struct CubeActionSettingsView: View {
+    let action: CubeActionType
+    @Binding var parameters: [CubeActionParameter]  // UI 專用
+    var isEditable: Bool = false                     // 模式切換
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let template = cubeActionParameterDefinitions.first(where: { $0.type == action }) {
+                ForEach(parameters.indices, id: \.self) { i in
+                    let paramTemplate = template.parameters.first(where: { $0.name == parameters[i].name }) ?? template.parameters[i]
+                    let value = parameters[i].type
+
+                    HStack {
+                        Text(paramTemplate.name).font(.headline)
+                        Spacer()
+
+                        if isEditable {
+                            switch value {
+                            case .toggle:
+                                Toggle("", isOn: binding(for: i, as: Bool.self))
+                            case .value:
+                                Stepper("\(binding(for: i, as: Int.self).wrappedValue)", value: binding(for: i, as: Int.self))
+                            case .text:
+                                TextField("Value", text: binding(for: i, as: String.self))
+                                    .textFieldStyle(.roundedBorder)
+                            case .time:
+                                Stepper("\(Int(binding(for: i, as: Double.self).wrappedValue)) sec",
+                                        value: binding(for: i, as: Double.self),
+                                        in: 0...999)
+                            case .progress:
+                                ProgressView(value: binding(for: i, as: Double.self).wrappedValue)
+                                    .frame(width: 120)
+                            }
+                        } else {
+                            Text(displayText(for: value))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            } else {
+                Text("No parameters for this action")
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding()
+    }
+
+    // MARK: - Helpers
+    func displayText(for type: CubeActionParameterType) -> String {
+        switch type {
+        case .toggle(let boolVal): return boolVal ? "ON" : "OFF"
+        case .value(let intVal): return "\(intVal)"
+        case .text(let textVal): return textVal
+        case .time(let timeVal): return "\(Int(timeVal)) sec"
+        case .progress(let progressVal): return "\(Int(progressVal * 100))%"
+        }
+    }
+
+    func binding<T>(for index: Int, as type: T.Type) -> Binding<T> {
+        Binding(
+            get: {
+                switch parameters[index].type {
+                case .toggle(let val as T): return val
+                case .value(let val as T): return val
+                case .text(let val as T): return val
+                case .time(let val as T): return val
+                case .progress(let val as T): return val
+                default: fatalError("Type mismatch")
+                }
+            },
+            set: { newValue in
+                switch parameters[index].type {
+                case .toggle: parameters[index].type = .toggle(newValue as! Bool)
+                case .value: parameters[index].type = .value(newValue as! Int)
+                case .text: parameters[index].type = .text(newValue as! String)
+                case .time: parameters[index].type = .time(newValue as! Double)
+                case .progress: parameters[index].type = .progress(newValue as! Double)
+                }
+            }
+        )
+    }
+}
+
+
+
 
 // 初始化 Sample Cubes，只在資料庫空的時候建立
 @MainActor
 func initializeSampleCubesIfNeeded(context: ModelContext) async {
+
+    let flagKey = "didInitializeSampleCubes"
+
+    // 若已匯入過 → 直接跳過
+    if UserDefaults.standard.bool(forKey: flagKey) {
+        return
+    }
+
     do {
-        // 先抓取現有資料
+        // 若資料庫內已有資料 → 不匯入
         let cubes = try context.fetch(FetchDescriptor<Cube>())
-        guard cubes.isEmpty else { return }  // 如果已有資料就不新增
+        if !cubes.isEmpty {
+            UserDefaults.standard.set(true, forKey: flagKey)
+            return
+        }
 
         // MARK: - Task Cubes
         let warmup = Cube(
@@ -393,7 +519,9 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             icon: "🔥",
             backgroundColor: "#FFA500",
             actionType: .timer,
-            duration: 10 * 60
+            duration: 10 * 60,
+            tags: ["warmup", "easy"],
+            sourceURL: URL(string: "https://example.com/warmup.mp4")
         )
 
         let interval1 = Cube(
@@ -401,7 +529,9 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             icon: "⚡️",
             backgroundColor: "#FF0000",
             actionType: .timer,
-            duration: 60
+            duration: 60,
+            tags: ["interval", "hiit"],
+            sourceURL: URL(string: "https://example.com/interval1.mp4")
         )
 
         let interval2 = Cube(
@@ -409,7 +539,9 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             icon: "💨",
             backgroundColor: "#FFFF00",
             actionType: .timer,
-            duration: 10 * 60
+            duration: 10 * 60,
+            tags: ["low", "recovery"],
+            sourceURL: URL(string: "https://example.com/interval2.mp4")
         )
 
         let climb = Cube(
@@ -417,7 +549,9 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             icon: "⛰️",
             backgroundColor: "#00FF00",
             actionType: .timer,
-            duration: 20 * 60
+            duration: 20 * 60,
+            tags: ["climb", "strength"],
+            sourceURL: URL(string: "https://example.com/climb.mp4")
         )
 
         let cadence = Cube(
@@ -425,7 +559,9 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             icon: "🎵",
             backgroundColor: "#0000FF",
             actionType: .timer,
-            duration: 15 * 60
+            duration: 15 * 60,
+            tags: ["cadence", "rhythm"],
+            sourceURL: URL(string: "https://example.com/cadence.mp4")
         )
 
         // MARK: - Combo Cubes
@@ -433,7 +569,8 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             title: "間歇訓練",
             icon: "⚡️",
             backgroundColor: "#FFBF00",
-            actionType: .combo
+            actionType: .combo,
+            tags: ["combo", "hiit"]
         )
         combo1.children.append(contentsOf: [warmup, interval1, interval2])
 
@@ -441,7 +578,8 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             title: "爬坡肌耐力",
             icon: "⛰️",
             backgroundColor: "#919E71",
-            actionType: .combo
+            actionType: .combo,
+            tags: ["combo", "climb"]
         )
         combo2.children.append(contentsOf: [warmup, climb])
 
@@ -449,18 +587,25 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             title: "踩踏節奏提升",
             icon: "🎵",
             backgroundColor: "#CAC5DD",
-            actionType: .combo
+            actionType: .combo,
+            tags: ["combo", "cadence"]
         )
         combo3.children.append(contentsOf: [warmup, cadence])
 
-        // MARK: - Insert & Save
-        let allCubes = [warmup, interval1, interval2, climb, cadence, combo1, combo2, combo3]
-        allCubes.forEach { context.insert($0) }
-        try context.save()
+        // MARK: - Save all cubes
+        let allCubes = [warmup, interval1, interval2, climb, cadence,
+                        combo1, combo2, combo3]
 
-        print("Sample Cubes saved successfully!")
+        for cube in allCubes {
+            context.insert(cube)
+        }
+
+        try context.save()
+        print("🔥 Sample Cubes saved successfully!")
+
+        UserDefaults.standard.set(true, forKey: flagKey)
 
     } catch {
-        print("Failed to fetch or save sample cubes: \(error)")
+        print("❌ Failed to fetch or save sample cubes: \(error)")
     }
 }

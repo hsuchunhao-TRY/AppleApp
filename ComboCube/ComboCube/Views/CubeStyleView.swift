@@ -51,7 +51,8 @@ private extension CubeStyleView {
                     .foregroundColor(.secondary)
             }
 
-            if let duration = cube.duration {
+            let duration = cube.duration
+            if duration > 0 {
                 Text("\(Int(duration / 60)) 分鐘")
                     .font(.caption2)
                     .foregroundColor(.secondary)
@@ -95,8 +96,8 @@ private extension CubeStyleView {
                     .foregroundColor(.secondary)
             }
 
-            if let duration = cube.duration {
-                Text("時長：\(Int(duration / 60)) 分鐘")
+            if cube.duration > 0 {
+                Text("時長：\(Int(cube.duration / 60)) 分鐘")
                     .font(.caption)
             }
 
@@ -119,8 +120,8 @@ private extension CubeStyleView {
             Text(cube.title)
                 .font(.system(size: 28, weight: .bold))
 
-            if let duration = cube.duration {
-                Text("\(Int(duration / 60)) 分鐘")
+            if cube.duration > 0 {
+                Text("\(Int(cube.duration / 60)) 分鐘")
                     .font(.headline)
                     .foregroundColor(.secondary)
             }
