@@ -20,6 +20,11 @@ struct ComboPagerView: View {
     @State private var showEdit: Bool = false
     @State private var showDetailPage: Bool = false
 
+    // 解鎖狀態
+    @State private var isUnlocked: Bool = false
+    @State private var unlockProgress: Double = 0
+    @State private var didUnlockThisSwipe: Bool = false
+
     @State private var dragDirectionLocked = false
     @State private var isVertical = false
 
@@ -40,22 +45,25 @@ struct ComboPagerView: View {
                     Spacer().frame(height: topBottomHeight + verticalSpacing)
                 }
 
-                // 中間 Combo Detail 填滿剩餘空間
+                // 中間 Combo（移除 RUN / EDIT 按鈕）
                 if let current = currentCombo {
                     ComboDetailCardView(
                         cube: current,
-                        onRun: { showDetailPage = true },
-                        onEdit: { showEdit = true }
+                        onRun: { },
+                        onEdit: { }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.horizontal, horizontalPadding)
                     .padding(.vertical, verticalSpacing)
-                    .contentShape(Rectangle())        // 讓整個區域可點擊
+                    .contentShape(Rectangle())
                     .onTapGesture {
-                        showDetailPage = true
+                        if isUnlocked {
+                            showEdit = true
+                        } else {
+                            showDetailPage = true
+                        }
                     }
                 }
-
 
                 // 下方 Combo Preview
                 if let next = nextCombo {
@@ -65,6 +73,37 @@ struct ComboPagerView: View {
                 } else {
                     Spacer().frame(height: topBottomHeight + verticalSpacing)
                 }
+
+                // 滑條 + 固定鎖頭
+                VStack(spacing: 8) {
+                    // 滑條
+                    Slider(value: $unlockProgress, in: 0...1)
+                        .controlSize(.large)
+                        .padding(.horizontal, 16)
+                        .padding(.trailing, 60) // 預留鎖頭空間
+                        .onChange(of: unlockProgress) { oldValue, newValue in
+                            if newValue >= 0.95 && !didUnlockThisSwipe {
+                                toggleLockState()
+                                didUnlockThisSwipe = true
+                                unlockProgress = 0
+                            }
+                            if newValue <= 0.05 { didUnlockThisSwipe = false }
+                        }
+
+                    // 固定右側鎖頭
+                    HStack {
+                        Spacer()
+                        Image(systemName: isUnlocked ? "lock.open.fill" : "lock.fill")
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 44, height: 44)
+                            .background(isUnlocked ? Color.green : Color.gray)
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
+                    }
+                    .padding(.trailing, 16)
+                }
+                .frame(height: 44)
             }
             .gesture(
                 DragGesture()
@@ -76,12 +115,12 @@ struct ComboPagerView: View {
                     CubeEditView(cube: current)
                 }
             }
-            .navigationTitle("Combos")
             .fullScreenCover(isPresented: $showDetailPage) {
                 if let current = currentCombo {
                     ComboDetailFullPageView(cube: current)
                 }
             }
+            .navigationBarHidden(true)
         }
     }
 
@@ -108,8 +147,12 @@ struct ComboPagerView: View {
         withAnimation(.spring()) { currentIndex -= 1 }
     }
 
-    func runCombo(_ combo: Cube) {
-        print("Run → \(combo.title)")
+    func toggleLockState() {
+        isUnlocked.toggle()
+        if isUnlocked {
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+        }
     }
 
     // MARK: - Drag Handling
@@ -126,8 +169,6 @@ struct ComboPagerView: View {
         if isVertical {
             if value.translation.height < -50 { goNext() }
             if value.translation.height > 50 { goPrev() }
-        } else {
-            if value.translation.width < -80 { showEdit = true }
         }
     }
 }
@@ -203,25 +244,12 @@ struct ComboDetailCardView: View {
                     }
                 }
             }
-
-            Divider()
-            
-            // Bottom Buttons
-            HStack {
-                Button("Edit") { onEdit() }
-                    .buttonStyle(.bordered)
-                Spacer()
-                Button("Run") { onRun() }
-                    .buttonStyle(.borderedProminent)
-            }
         }
         .padding()
         .background(Color(hex: cube.backgroundColor)) // ⭐ 背景填滿
         .cornerRadius(16)
     }
 }
-
-
 
 // Task 狀態
 enum TaskStatus {
@@ -399,99 +427,12 @@ struct ComboDetailFullPageView: View {
         }
     }
 
-
     func timeString(from seconds: TimeInterval) -> String {
         let mins = Int(seconds) / 60
         let secs = Int(seconds) % 60
         return String(format: "%02d:%02d", mins, secs)
     }
 }
-
-struct CubeActionSettingsView: View {
-    let action: CubeActionType
-    @Binding var parameters: [CubeActionParameter]  // UI 專用
-    var isEditable: Bool = false                     // 模式切換
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let template = cubeActionParameterDefinitions.first(where: { $0.type == action }) {
-                ForEach(parameters.indices, id: \.self) { i in
-                    let paramTemplate = template.parameters.first(where: { $0.name == parameters[i].name }) ?? template.parameters[i]
-                    let value = parameters[i].type
-
-                    HStack {
-                        Text(paramTemplate.name).font(.headline)
-                        Spacer()
-
-                        if isEditable {
-                            switch value {
-                            case .toggle:
-                                Toggle("", isOn: binding(for: i, as: Bool.self))
-                            case .value:
-                                Stepper("\(binding(for: i, as: Int.self).wrappedValue)", value: binding(for: i, as: Int.self))
-                            case .text:
-                                TextField("Value", text: binding(for: i, as: String.self))
-                                    .textFieldStyle(.roundedBorder)
-                            case .time:
-                                Stepper("\(Int(binding(for: i, as: Double.self).wrappedValue)) sec",
-                                        value: binding(for: i, as: Double.self),
-                                        in: 0...999)
-                            case .progress:
-                                ProgressView(value: binding(for: i, as: Double.self).wrappedValue)
-                                    .frame(width: 120)
-                            }
-                        } else {
-                            Text(displayText(for: value))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-            } else {
-                Text("No parameters for this action")
-                    .foregroundColor(.gray)
-            }
-        }
-        .padding()
-    }
-
-    // MARK: - Helpers
-    func displayText(for type: CubeActionParameterType) -> String {
-        switch type {
-        case .toggle(let boolVal): return boolVal ? "ON" : "OFF"
-        case .value(let intVal): return "\(intVal)"
-        case .text(let textVal): return textVal
-        case .time(let timeVal): return "\(Int(timeVal)) sec"
-        case .progress(let progressVal): return "\(Int(progressVal * 100))%"
-        }
-    }
-
-    func binding<T>(for index: Int, as type: T.Type) -> Binding<T> {
-        Binding(
-            get: {
-                switch parameters[index].type {
-                case .toggle(let val as T): return val
-                case .value(let val as T): return val
-                case .text(let val as T): return val
-                case .time(let val as T): return val
-                case .progress(let val as T): return val
-                default: fatalError("Type mismatch")
-                }
-            },
-            set: { newValue in
-                switch parameters[index].type {
-                case .toggle: parameters[index].type = .toggle(newValue as! Bool)
-                case .value: parameters[index].type = .value(newValue as! Int)
-                case .text: parameters[index].type = .text(newValue as! String)
-                case .time: parameters[index].type = .time(newValue as! Double)
-                case .progress: parameters[index].type = .progress(newValue as! Double)
-                }
-            }
-        )
-    }
-}
-
-
-
 
 // 初始化 Sample Cubes，只在資料庫空的時候建立
 @MainActor
