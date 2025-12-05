@@ -407,7 +407,6 @@ struct ComboDetailFullPageView: View {
     }
 }
 
-
 struct CubeActionSettingsView: View {
     let action: CubeActionType
     @Binding var parameters: [CubeActionParameter]  // UI 專用
@@ -520,6 +519,9 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             backgroundColor: "#FFA500",
             actionType: .timer,
             duration: 10 * 60,
+            durationEn: true,
+            durationProgressEn: true,
+            tapCountEn: false,
             tags: ["warmup", "easy"],
             sourceURL: URL(string: "https://example.com/warmup.mp4")
         )
@@ -530,6 +532,8 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             backgroundColor: "#FF0000",
             actionType: .timer,
             duration: 60,
+            durationEn: true,
+            durationProgressEn: true,
             tags: ["interval", "hiit"],
             sourceURL: URL(string: "https://example.com/interval1.mp4")
         )
@@ -540,6 +544,8 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             backgroundColor: "#FFFF00",
             actionType: .timer,
             duration: 10 * 60,
+            durationEn: true,
+            durationProgressEn: true,
             tags: ["low", "recovery"],
             sourceURL: URL(string: "https://example.com/interval2.mp4")
         )
@@ -550,6 +556,8 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             backgroundColor: "#00FF00",
             actionType: .timer,
             duration: 20 * 60,
+            durationEn: true,
+            durationProgressEn: true,
             tags: ["climb", "strength"],
             sourceURL: URL(string: "https://example.com/climb.mp4")
         )
@@ -560,6 +568,8 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             backgroundColor: "#0000FF",
             actionType: .timer,
             duration: 15 * 60,
+            durationEn: true,
+            durationProgressEn: true,
             tags: ["cadence", "rhythm"],
             sourceURL: URL(string: "https://example.com/cadence.mp4")
         )
@@ -570,6 +580,8 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             icon: "⚡️",
             backgroundColor: "#FFBF00",
             actionType: .combo,
+            loopCount: 1,
+            autoNextTask: true,
             tags: ["combo", "hiit"]
         )
         combo1.children.append(contentsOf: [warmup, interval1, interval2])
@@ -579,6 +591,8 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             icon: "⛰️",
             backgroundColor: "#919E71",
             actionType: .combo,
+            loopCount: 1,
+            autoNextTask: true,
             tags: ["combo", "climb"]
         )
         combo2.children.append(contentsOf: [warmup, climb])
@@ -588,6 +602,8 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
             icon: "🎵",
             backgroundColor: "#CAC5DD",
             actionType: .combo,
+            loopCount: 1,
+            autoNextTask: true,
             tags: ["combo", "cadence"]
         )
         combo3.children.append(contentsOf: [warmup, cadence])

@@ -27,12 +27,9 @@ let cubeActionParameterDefinitions: [CubeActionTemplate] = [
     CubeActionTemplate(
         type: .timer,
         parameters: [
-            CubeActionParameter(
-                name: "Duration", type: .time(0), used: true, isHidden: false),
-            CubeActionParameter(
-                name: "Enable Sound", type: .toggle(false), used: true, isHidden: false),
-            CubeActionParameter(
-                name: "Progress", type: .progress(0.0), used: true, isHidden: false)
+            CubeActionParameter(name: "Duration", type: .time(0), used: true, isHidden: false),
+            CubeActionParameter(name: "Enable Sound", type: .toggle(false), used: true, isHidden: false),
+            CubeActionParameter(name: "Progress", type: .progress(0.0), used: true, isHidden: false)
         ]
     ),
 
@@ -40,12 +37,9 @@ let cubeActionParameterDefinitions: [CubeActionTemplate] = [
     CubeActionTemplate(
         type: .countdown,
         parameters: [
-            CubeActionParameter(
-                name: "Countdown Time", type: .time(0), used: true, isHidden: false),
-            CubeActionParameter(
-                name: "Vibrate on Finish", type: .toggle(false), used: true, isHidden: false),
-            CubeActionParameter(
-                name: "Progress", type: .progress(0.0), used: true, isHidden: false)
+            CubeActionParameter(name: "Countdown Time", type: .time(0), used: true, isHidden: false),
+            CubeActionParameter(name: "Vibrate on Finish", type: .toggle(false), used: true, isHidden: false),
+            CubeActionParameter(name: "Progress", type: .progress(0.0), used: true, isHidden: false)
         ]
     ),
 
@@ -53,10 +47,8 @@ let cubeActionParameterDefinitions: [CubeActionTemplate] = [
     CubeActionTemplate(
         type: .repetitions,
         parameters: [
-            CubeActionParameter(
-                name: "Repetition Count", type: .value(1), used: true, isHidden: false),
-            CubeActionParameter(
-                name: "Progress", type: .progress(0.0), used: true, isHidden: false)
+            CubeActionParameter(name: "Repetition Count", type: .value(1), used: true, isHidden: false),
+            CubeActionParameter(name: "Progress", type: .progress(0.0), used: true, isHidden: false)
         ]
     ),
 
@@ -64,8 +56,7 @@ let cubeActionParameterDefinitions: [CubeActionTemplate] = [
     CubeActionTemplate(
         type: .combo,
         parameters: [
-            CubeActionParameter(
-                name: "Loop Count", type: .value(1), used: true, isHidden: false)
+            CubeActionParameter(name: "Loop Count", type: .value(1), used: true, isHidden: false)
         ]
     ),
 

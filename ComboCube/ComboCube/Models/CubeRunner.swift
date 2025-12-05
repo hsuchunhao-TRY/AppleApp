@@ -1,6 +1,6 @@
 import Foundation
 import SwiftData
-internal import Combine
+import Combine
 
 // MARK: - CubeTask Protocol
 protocol CubeTask: AnyObject {
