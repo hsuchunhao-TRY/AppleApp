@@ -19,11 +19,10 @@ struct ComboPagerView: View {
     @State private var currentIndex: Int = 0
     @State private var showEdit: Bool = false
     @State private var showDetailPage: Bool = false
+    @State private var showAddMenu: Bool = false   // ✅ 控制選單顯示
 
-    // 解鎖狀態
+    // ✅ 解鎖狀態
     @State private var isUnlocked: Bool = false
-    @State private var unlockProgress: Double = 0
-    @State private var didUnlockThisSwipe: Bool = false
 
     @State private var dragDirectionLocked = false
     @State private var isVertical = false
@@ -45,24 +44,20 @@ struct ComboPagerView: View {
                     Spacer().frame(height: topBottomHeight + verticalSpacing)
                 }
 
-                // 中間 Combo（移除 RUN / EDIT 按鈕）
+                // 中間 Combo
                 if let current = currentCombo {
-                    ComboDetailCardView(
-                        cube: current,
-                        onRun: { },
-                        onEdit: { }
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.vertical, verticalSpacing)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if isUnlocked {
-                            showEdit = true
-                        } else {
-                            showDetailPage = true
+                    ComboDetailCardView(cube: current)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.vertical, verticalSpacing)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if isUnlocked {
+                                showEdit = true
+                            } else {
+                                showDetailPage = true
+                            }
                         }
-                    }
                 }
 
                 // 下方 Combo Preview
@@ -74,36 +69,68 @@ struct ComboPagerView: View {
                     Spacer().frame(height: topBottomHeight + verticalSpacing)
                 }
 
-                // 滑條 + 固定鎖頭
-                VStack(spacing: 8) {
-                    // 滑條
-                    Slider(value: $unlockProgress, in: 0...1)
-                        .controlSize(.large)
-                        .padding(.horizontal, 16)
-                        .padding(.trailing, 60) // 預留鎖頭空間
-                        .onChange(of: unlockProgress) { oldValue, newValue in
-                            if newValue >= 0.95 && !didUnlockThisSwipe {
-                                toggleLockState()
-                                didUnlockThisSwipe = true
-                                unlockProgress = 0
+                // ✅ 底部操作列：左側新增，右側鎖頭
+                ZStack(alignment: .bottomLeading) {
+
+                    // ✅「往上展開」的新增選單（寬度 = Combo）
+                    if showAddMenu {
+                        VStack(alignment: .leading, spacing: 12) {
+
+                            addMenuButton(title: "Combo", icon: "square.grid.2x2", type: .combo)
+                            addMenuButton(title: "Timer", icon: "timer", type: .timer)
+                            addMenuButton(title: "Countdown", icon: "clock.arrow.circlepath", type: .countdown)
+                            addMenuButton(title: "Repetitions", icon: "repeat", type: .repetitions)
+
+                        }
+                        .padding(12)
+                        .frame(width: UIScreen.main.bounds.width - horizontalPadding * 2)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(16)
+                        .shadow(radius: 8)
+                        .padding(.bottom, 70)          // ✅ 往上推
+                        .padding(.leading, horizontalPadding)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(10)
+                    }
+
+                    // ✅ 底部按鈕列
+                    HStack {
+
+                        // ✅ 左側「＋」
+                        if isUnlocked {
+                            Button {
+                                withAnimation(.spring()) {
+                                    showAddMenu.toggle()
+                                }
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .frame(width: 48, height: 48)
+                                    .background(Color.blue)
+                                    .clipShape(Circle())
                             }
-                            if newValue <= 0.05 { didUnlockThisSwipe = false }
+                            .padding(.leading, 16)
                         }
 
-                    // 固定右側鎖頭
-                    HStack {
                         Spacer()
-                        Image(systemName: isUnlocked ? "lock.open.fill" : "lock.fill")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(isUnlocked ? Color.green : Color.gray)
-                            .clipShape(Circle())
-                            .shadow(radius: 4)
+
+                        // ✅ 右側鎖頭（不動）
+                        Button {
+                            toggleLockState()
+                            withAnimation { showAddMenu = false }   // 上鎖時自動收起
+                        } label: {
+                            Image(systemName: isUnlocked ? "lock.open.fill" : "lock.fill")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .frame(width: 48, height: 48)
+                                .background(isUnlocked ? .green : .gray)
+                                .clipShape(Circle())
+                        }
+                        .padding(.trailing, 16)
                     }
-                    .padding(.trailing, 16)
+                    .padding(.bottom, 12)
                 }
-                .frame(height: 44)
             }
             .gesture(
                 DragGesture()
@@ -125,6 +152,62 @@ struct ComboPagerView: View {
     }
 
     // MARK: - Helpers
+    @ViewBuilder
+    func addMenuButton(title: String, icon: String, type: CubeActionType) -> some View {
+        Button {
+            addNewItem(type: type)
+            withAnimation {
+                showAddMenu = false
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .frame(width: 28)
+
+                Text(title)
+                    .font(.headline)
+
+                Spacer()
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        }
+    }
+
+    func addNewItem(type: CubeActionType) {
+        let newCube = Cube(
+            title: type.rawValue.capitalized,
+            icon: "⚡️",
+            backgroundColor: "#FFBF00",
+            actionType: type,          // <-- 傳 enum（不是 String）
+            loopCount: 1,
+            autoNextTask: false,
+            tags: []
+        )
+
+        context.insert(newCube)
+        try? context.save()
+
+        // 因為 combos 是 @Query 綁定，保存後 combos 會更新
+        // 把 currentIndex 設為最後一個（如果 combos 已更新）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            currentIndex = max(0, combos.count - 1)
+        }
+
+        showAddMenu = false
+    }
+
+
+    func addNewCube(type: CubeActionType) {
+        let newCube = Cube(title: "\(type)", icon: "⚡️", backgroundColor: "#FFBF00", actionType: type)
+        context.insert(newCube)
+        try? context.save()
+        currentIndex = combos.count - 1
+        showAddMenu = false
+    }
+
     var currentCombo: Cube? {
         combos.indices.contains(currentIndex) ? combos[currentIndex] : nil
     }
@@ -149,10 +232,10 @@ struct ComboPagerView: View {
 
     func toggleLockState() {
         isUnlocked.toggle()
-        if isUnlocked {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-        }
+        #if canImport(UIKit)
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        #endif
     }
 
     // MARK: - Drag Handling
@@ -165,13 +248,13 @@ struct ComboPagerView: View {
 
     func handleDragEnded(_ value: DragGesture.Value) {
         dragDirectionLocked = false
-
         if isVertical {
             if value.translation.height < -50 { goNext() }
             if value.translation.height > 50 { goPrev() }
         }
     }
 }
+
 
 // MARK: - 上下 Preview 卡片
 struct ComboTopBottomPreview: View {
@@ -196,8 +279,8 @@ struct ComboTopBottomPreview: View {
 // MARK: - 中間 Combo 內容
 struct ComboDetailCardView: View {
     let cube: Cube
-    let onRun: () -> Void
-    let onEdit: () -> Void
+    let onRun: () -> Void = {}
+    let onEdit: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 16) {
@@ -454,6 +537,19 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
         }
 
         // MARK: - Task Cubes
+        let C = Cube(
+            title: "熱身 10 秒",
+            icon: "🔥",
+            backgroundColor: "#FFA500",
+            actionType: .timer,
+            duration: 10,
+            durationEn: true,
+            durationProgressEn: true,
+            tapCountEn: false,
+            tags: ["warmup", "easy"],
+            sourceURL: URL(string: "https://example.com/warmup.mp4")
+        )
+
         let warmup = Cube(
             title: "熱身 10 分鐘",
             icon: "🔥",
@@ -550,7 +646,7 @@ func initializeSampleCubesIfNeeded(context: ModelContext) async {
         combo3.children.append(contentsOf: [warmup, cadence])
 
         // MARK: - Save all cubes
-        let allCubes = [warmup, interval1, interval2, climb, cadence,
+        let allCubes = [C, warmup, interval1, interval2, climb, cadence,
                         combo1, combo2, combo3]
 
         for cube in allCubes {

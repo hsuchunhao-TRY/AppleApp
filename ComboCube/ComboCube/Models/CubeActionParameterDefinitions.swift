@@ -8,6 +8,7 @@ enum CubeActionParameterType {
     case progress(Double) // 進度
 }
 
+
 struct CubeActionParameter: Identifiable {
     let id = UUID()
     let name: String
@@ -27,9 +28,30 @@ let cubeActionParameterDefinitions: [CubeActionTemplate] = [
     CubeActionTemplate(
         type: .timer,
         parameters: [
-            CubeActionParameter(name: "Duration", type: .time(0), used: true, isHidden: false),
-            CubeActionParameter(name: "Enable Sound", type: .toggle(false), used: true, isHidden: false),
-            CubeActionParameter(name: "Progress", type: .progress(0.0), used: true, isHidden: false)
+            CubeActionParameter(
+                name: "Duration",
+                type: .time(0),
+                used: true,
+                isHidden: false
+            ),
+//            CubeActionParameter(
+//                name: "Enable Timer",
+//                type: .toggle(true),      // 對應 cube.durationEn
+//                used: true,
+//                isHidden: false
+//            ),
+//            CubeActionParameter(
+//                name: "Progress",
+//                type: .progress(0.0),     // 對應 cube.durationProgressEn
+//                used: true,
+//                isHidden: false
+//            ),
+//            CubeActionParameter(
+//                name: "Enable Sound",
+//                type: .toggle(false),     // 對應 cube.soundEn
+//                used: true,
+//                isHidden: false
+//            )
         ]
     ),
 
@@ -38,7 +60,7 @@ let cubeActionParameterDefinitions: [CubeActionTemplate] = [
         type: .countdown,
         parameters: [
             CubeActionParameter(name: "Countdown Time", type: .time(0), used: true, isHidden: false),
-            CubeActionParameter(name: "Vibrate on Finish", type: .toggle(false), used: true, isHidden: false),
+//            CubeActionParameter(name: "Vibrate on Finish", type: .toggle(false), used: true, isHidden: false),
             CubeActionParameter(name: "Progress", type: .progress(0.0), used: true, isHidden: false)
         ]
     ),
@@ -47,8 +69,24 @@ let cubeActionParameterDefinitions: [CubeActionTemplate] = [
     CubeActionTemplate(
         type: .repetitions,
         parameters: [
-            CubeActionParameter(name: "Repetition Count", type: .value(1), used: true, isHidden: false),
-            CubeActionParameter(name: "Progress", type: .progress(0.0), used: true, isHidden: false)
+            CubeActionParameter(
+                name: "Tap Count",
+                type: .value(0),          // 對應 cube.tapCount
+                used: true,
+                isHidden: false
+            ),
+//            CubeActionParameter(
+//                name: "Enable Tap Count",
+//                type: .toggle(false),     // 對應 cube.tapCountEn
+//                used: true,
+//                isHidden: false
+//            ),
+            CubeActionParameter(
+                name: "Progress",
+                type: .progress(0.0),     // 對應 cube.tapCountProgressEn
+                used: true,
+                isHidden: false
+            )
         ]
     ),
 

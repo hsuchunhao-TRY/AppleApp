@@ -16,6 +16,7 @@ struct ComboCubeApp: App {
         Task {
             await initializeSampleCubesIfNeeded(context: context)
         }
+//        clearAllCubes(context: context)
     }
 
     
@@ -25,4 +26,18 @@ struct ComboCubeApp: App {
                 .modelContainer(persistence.container) // 注入 SwiftData container
         }
     }
+}
+
+func clearAllCubes(context: ModelContext) {
+    // 1️⃣ 清除 Cube 資料
+    let fetchRequest = FetchDescriptor<Cube>()
+    if let cubes = try? context.fetch(fetchRequest) {
+        cubes.forEach { cube in
+            context.delete(cube)
+        }
+        try? context.save()
+    }
+
+    // 2️⃣ 重置初始化 flag
+    UserDefaults.standard.removeObject(forKey: "didInitializeSampleCubes")
 }
