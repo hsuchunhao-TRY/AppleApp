@@ -34,6 +34,7 @@ struct ComboPagerView: View {
     let horizontalPadding: CGFloat = 20
     let verticalSpacing: CGFloat = 8
     let bottomButtonsHeight: CGFloat = 64
+    let addMenuMaxHeight = UIScreen.main.bounds.height * 0.4
 
     var body: some View {
         NavigationStack {
@@ -73,54 +74,75 @@ struct ComboPagerView: View {
                 .frame(maxHeight: .infinity)
 
                 // ✅ 選單：現在是「真的佔高度」，不再覆蓋 combo
-                if showAddMenu {
-                    VStack(alignment: .leading, spacing: 12) {
-                        addMenuButton(title: "Combo", icon: "square.grid.2x2", type: .combo)
-                        addMenuButton(title: "Timer", icon: "timer", type: .timer)
-                        addMenuButton(title: "Countdown", icon: "clock.arrow.circlepath", type: .countdown)
-                        addMenuButton(title: "Repetitions", icon: "repeat", type: .repetitions)
-                    }
-                    .padding(12)
-                    .background(Color("AppBackground"))
-                    .cornerRadius(16)
-                    .padding(.horizontal, horizontalPadding)
-                    .transition(.move(edge: .bottom))
-                }
+                // 底部操作列 + 「＋」選單
+                ZStack(alignment: .bottomLeading) {
 
-                // ✅ 底部按鈕列（永遠在最下面）
-                HStack {
-                    if isUnlocked {
-                        Button {
-                            withAnimation(.spring()) {
-                                showAddMenu.toggle()
+                    // 「往上展開」的新增選單
+                    // 「＋選單」
+                    if showAddMenu {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 12) {
+                                addMenuButton(title: "Combo", icon: "square.grid.2x2", type: .combo)
+                                addMenuButton(title: "Timer", icon: "timer", type: .timer)
+                                addMenuButton(title: "Countdown", icon: "clock.arrow.circlepath", type: .countdown)
+                                addMenuButton(title: "Repetitions", icon: "repeat", type: .repetitions)
                             }
+                            .padding(12)
+                        }
+                        .frame(width: UIScreen.main.bounds.width - horizontalPadding * 2)
+                        .frame(maxHeight: addMenuMaxHeight)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(16)
+                        .shadow(radius: 8)
+                        .padding(.bottom, 70)
+                        .padding(.leading, horizontalPadding)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(10)
+                        // ✅ 同時允許 ScrollView 滑動，不被 Combo 手勢攔截
+                        .simultaneousGesture(
+                            DragGesture()
+                                .onChanged { _ in }   // 空的 handler，阻止外層 gesture 攔截
+                        )
+                    }
+
+                    // 底部按鈕列
+                    HStack {
+
+                        // 左側「＋」
+                        if isUnlocked {
+                            Button {
+                                withAnimation(.spring()) {
+                                    showAddMenu.toggle()
+                                }
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .frame(width: 48, height: 48)
+                                    .background(Color.blue)
+                                    .clipShape(Circle())
+                            }
+                            .padding(.leading, 16)
+                        }
+
+                        Spacer()
+
+                        // 右側鎖頭
+                        Button {
+                            toggleLockState()
+                            withAnimation { showAddMenu = false }   // 上鎖時自動收起
                         } label: {
-                            Image(systemName: "plus")
+                            Image(systemName: isUnlocked ? "lock.open.fill" : "lock.fill")
                                 .font(.title2)
                                 .foregroundColor(.white)
                                 .frame(width: 48, height: 48)
-                                .background(Color.blue)
+                                .background(isUnlocked ? .green : .gray)
                                 .clipShape(Circle())
                         }
+                        .padding(.trailing, 16)
                     }
-
-                    Spacer()
-
-                    Button {
-                        toggleLockState()
-                        withAnimation { showAddMenu = false }
-                    } label: {
-                        Image(systemName: isUnlocked ? "lock.open.fill" : "lock.fill")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 48, height: 48)
-                            .background(isUnlocked ? .green : .gray)
-                            .clipShape(Circle())
-                    }
+                    .padding(.bottom, 12)
                 }
-                .frame(height: bottomButtonsHeight)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
             }
             .gesture(
                 DragGesture()
@@ -128,7 +150,6 @@ struct ComboPagerView: View {
                     .onEnded { handleDragEnded($0) }
             )
         }
-
     }
 
     // MARK: helpers
