@@ -21,7 +21,7 @@ protocol CubeTask: AnyObject {
     func triggerCount()
 }
 
-// MARK: - BaseTask (共同邏輯)
+// MARK: - BaseTask
 class BaseTask: CubeTask {
     let cube: Cube
     weak var runner: CubeRunner?
@@ -29,13 +29,12 @@ class BaseTask: CubeTask {
     var isRunning: Bool = false
     var onFinish: (() -> Void)?
 
-    var timeRemaining: TimeInterval
+    var timeRemaining: TimeInterval = 0
     var completedCount: Int = 0
 
     init(cube: Cube, runner: CubeRunner?) {
         self.cube = cube
         self.runner = runner
-        self.timeRemaining = Double(cube.duration)
     }
 
     func start() { isRunning = true }
@@ -52,33 +51,31 @@ class BaseTask: CubeTask {
     }
 }
 
-// MARK: - DummyTask (不做事就是立即完成)
+// MARK: - DummyTask
 class DummyTask: BaseTask {
     override func start() {
         super.start()
-        stop() // 立即 finish
+        stop()
     }
 }
 
-// MARK: - TimerTask (時間 countdown)
+// MARK: - TimerTask
 class TimerTask: BaseTask { }
 
-// MARK: - CountdownTask (行為與 TimerTask 相同，可分開以後擴充)
+// MARK: - CountdownTask
 class CountdownTask: BaseTask { }
 
-// MARK: - RepetitionTask (根據 triggerCount 控制)
+// MARK: - RepetitionTask
 class RepetitionTask: BaseTask {
     override func start() {
         isRunning = true
-        // 等 triggerCount 觸發完成
     }
 }
 
-// MARK: - ComboTask (只展開 children，不執行自己的 timer)
+// MARK: - ComboTask
 class ComboTask: BaseTask {
     override func start() {
         isRunning = true
-        // Combo 不做 timer，直接讓 runner 執行下一個 task
         onFinish?()
     }
 }
@@ -126,8 +123,6 @@ class CubeRunner: ObservableObject {
     // MARK: Timer loop
     func scheduleTimer(for task: CubeTask) {
         timerTask?.cancel()
-
-        // ComboTask 不需要 timer
         if task is ComboTask { return }
 
         timerTask = Task { @MainActor in
@@ -167,5 +162,44 @@ class CubeRunner: ObservableObject {
             }
         }
         return [root]
+    }
+}
+
+// MARK: - Cube to Task
+extension Cube {
+    func toTask(runner: CubeRunner?) -> CubeTask {
+        guard let action = actions.first else {
+            return DummyTask(cube: self, runner: runner)
+        }
+
+        switch action.type {
+        case .combo:
+            return ComboTask(cube: self, runner: runner)
+
+        case .timer:
+            let task = TimerTask(cube: self, runner: runner)
+            if let duration = action.parameters?["Duration"], case let .double(d) = duration {
+                task.timeRemaining = d
+            }
+            return task
+
+        case .countdown:
+            let task = CountdownTask(cube: self, runner: runner)
+            if let duration = action.parameters?["Duration"], case let .double(d) = duration {
+                task.timeRemaining = d
+            }
+            return task
+
+        case .repetitions:
+            let task = RepetitionTask(cube: self, runner: runner)
+            if let tapCount = action.parameters?["Tap Count"], case let .int(c) = tapCount {
+                task.timeRemaining = Double(c)
+                task.completedCount = 0
+            }
+            return task
+
+        default:
+            return DummyTask(cube: self, runner: runner)
+        }
     }
 }

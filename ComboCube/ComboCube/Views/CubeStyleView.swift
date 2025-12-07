@@ -30,6 +30,13 @@ struct CubeStyleView: View {
 }
 
 private extension CubeStyleView {
+    
+    // MARK: - Helpers to get duration from CubeAction
+    var duration: Double {
+        cube.actions.first { $0.type == .timer || $0.type == .countdown }?
+            .parameters?["Duration"]?.valueAsDouble() ?? 0
+    }
+    
     var basicStyle: some View {
         VStack(spacing: 8) {
             Text(cube.icon)
@@ -45,13 +52,12 @@ private extension CubeStyleView {
                     .foregroundColor(.secondary)
             }
 
-            if cube.actionType == "combo" {
+            if cube.type == .combo {
                 Text("\(cube.children.count) 項目")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
 
-            let duration = cube.duration
             if duration > 0 {
                 Text("\(Int(duration / 60)) 分鐘")
                     .font(.caption2)
@@ -96,12 +102,12 @@ private extension CubeStyleView {
                     .foregroundColor(.secondary)
             }
 
-            if cube.duration > 0 {
-                Text("時長：\(Int(cube.duration / 60)) 分鐘")
+            if duration > 0 {
+                Text("時長：\(Int(duration / 60)) 分鐘")
                     .font(.caption)
             }
 
-            if cube.actionType == "combo" {
+            if cube.type == .combo {
                 Text("包含：\(cube.children.count) 個子項目")
                     .font(.caption2)
             }
@@ -120,8 +126,8 @@ private extension CubeStyleView {
             Text(cube.title)
                 .font(.system(size: 28, weight: .bold))
 
-            if cube.duration > 0 {
-                Text("\(Int(cube.duration / 60)) 分鐘")
+            if duration > 0 {
+                Text("\(Int(duration / 60)) 分鐘")
                     .font(.headline)
                     .foregroundColor(.secondary)
             }
@@ -131,5 +137,17 @@ private extension CubeStyleView {
         .background(Color(hex: cube.backgroundColor))
         .cornerRadius(20)
         .shadow(radius: 4)
+    }
+}
+
+// MARK: - CodableValue Helper
+private extension CodableValue {
+    func valueAsDouble() -> Double {
+        switch self {
+        case .int(let v): return Double(v)
+        case .double(let v): return v
+        case .string(let v): return Double(v) ?? 0
+        case .bool: return 0
+        }
     }
 }

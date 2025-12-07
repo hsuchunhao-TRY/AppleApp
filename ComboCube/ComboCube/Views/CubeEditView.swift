@@ -41,38 +41,8 @@ struct CubeEditView: View {
                         Text("None").tag(CubeActionType.none)
                     }
                     .pickerStyle(.segmented)
-                    .onChange(of: selectedAction) { newValue in
-                        // 延遲更新 parameters 避免 SwiftUI crash
-                        DispatchQueue.main.async {
-                            if let template = cubeActionParameterDefinitions.first(where: { $0.type == newValue }) {
-                                parameters = template.parameters.map { paramTemplate in
-                                    var param = CubeActionParameter(
-                                        name: paramTemplate.name,
-                                        type: paramTemplate.type,
-                                        used: paramTemplate.used,
-                                        isHidden: paramTemplate.isHidden
-                                    )
-                                    // 對應 cube 現有值
-                                    switch param.name {
-                                    case "Duration":
-                                        param.type = .time(cube.duration)
-                                    case "Enable Sound":
-                                        param.type = .toggle(cube.soundEn)
-                                    case "Progress":
-                                        param.type = .progress(cube.durationProgressEn ? 1.0 : 0.0)
-                                    case "Tap Count":
-                                        param.type = .value(cube.tapCount)
-                                    case "Tap Enable":
-                                        param.type = .toggle(cube.tapCountEn)
-                                    default:
-                                        break
-                                    }
-                                    return param
-                                }
-                            } else {
-                                parameters = []
-                            }
-                        }
+                    .onChange(of: selectedAction) {oldValue, newValue in
+                        loadParameters(for: newValue)
                     }
                 }
 
@@ -91,145 +61,54 @@ struct CubeEditView: View {
                 }
             }
             .onAppear {
-                loadParametersFromCube()
-            }
-        }
-        .onAppear {
-            icon = cube.icon
-            title = cube.title
-            selectedAction = cube.type
-            backgroundColor = Color(hex: cube.backgroundColor)
-            // 初始化 parameters
-            DispatchQueue.main.async {
-                if let template = cubeActionParameterDefinitions.first(where: { $0.type == selectedAction }) {
-                    parameters = template.parameters.map { paramTemplate in
-                        var param = CubeActionParameter(
-                            name: paramTemplate.name,
-                            type: paramTemplate.type,
-                            used: paramTemplate.used,
-                            isHidden: paramTemplate.isHidden
-                        )
-                        switch param.name {
-                        case "Duration":
-                            param.type = .time(cube.duration)
-                        case "Enable Sound":
-                            param.type = .toggle(cube.soundEn)
-                        case "Progress":
-                            param.type = .progress(cube.durationProgressEn ? 1.0 : 0.0)
-                        case "Tap Count":
-                            param.type = .value(cube.tapCount)
-                        case "Tap Enable":
-                            param.type = .toggle(cube.tapCountEn)
-                        default:
-                            break
-                        }
-                        return param
-                    }
-                }
+                icon = cube.icon
+                title = cube.title
+                selectedAction = cube.type
+                backgroundColor = Color(hex: cube.backgroundColor)
+                loadParameters(for: selectedAction)
             }
         }
     }
 
     // MARK: - Helpers
-    enum CubeParameterName: String {
-        // Timer
-        case duration = "Duration"
-        case enableSound = "Enable Sound"
-        case progress = "Progress"
-
-        // Tap
-        case tapCount = "Tap Count"
-        case tapEnable = "Tap Enable"
-        case tapProgress = "Tap Progress"
-
-        // Combo
-        case loopCount = "Loop Count"
-        case autoNextTask = "Auto Next Task"
-    }
-
-    private func loadParametersFromCube() {
-        guard let template = cubeActionParameterDefinitions
-            .first(where: { $0.type == cube.type }) else {
-            parameters = []
-            return
-        }
-
-        parameters = template.parameters.map { templateParam in
-            var param = templateParam
-
-            if let name = CubeParameterName(rawValue: templateParam.name) {
-                switch name {
-                case .duration:
-                    param.type = .time(cube.duration)
-                case .enableSound:
-                    param.type = .toggle(cube.soundEn)
-                case .progress:
-                    param.type = .progress(cube.durationProgressEn ? 1.0 : 0.0)
-                case .tapCount:
-                    param.type = .value(cube.tapCount)
-                case .tapEnable:
-                    param.type = .toggle(cube.tapCountEn)
-                case .tapProgress:
-                    param.type = .progress(cube.tapCountProgressEn ? 1.0 : 0.0)
-                case .loopCount:
-                    param.type = .value(cube.loopCount ?? 0)
-                case .autoNextTask:
-                    param.type = .toggle(cube.autoNextTask)
+    private func loadParameters(for actionType: CubeActionType) {
+        if let action = cube.actions.first(where: { $0.type == actionType }),
+           let parametersDict = action.parameters {
+            parameters = parametersDict.map { pair in
+                let key = pair.key
+                let value = pair.value
+                let type: CubeActionParameterType
+                switch value {
+                case .int(let v): type = .value(v)
+                case .double(let v): type = .time(v)
+                case .bool(let v): type = .toggle(v)
+                case .string(let v): type = .text(v)
                 }
+                return CubeActionParameter(name: key, type: type, used: true, isHidden: false)
             }
-
-            return param
+        } else {
+            parameters = []
         }
     }
 
     private func applyParametersToCube() {
         for param in parameters {
-            guard let name = CubeParameterName(rawValue: param.name) else { continue }
+            let key = param.name
 
-            switch name {
+            if let index = cube.actions.firstIndex(where: { $0.type == selectedAction }) {
+                let action = cube.actions[index]
+                var dict = action.parameters ?? [:]
 
-            // MARK: - Timer
-            case .duration:
-                if case .time(let value) = param.type {
-                    cube.duration = value
+                switch param.type {
+                case .value(let v): dict[key] = .int(v)
+                case .time(let v): dict[key] = .double(v)
+                case .toggle(let v): dict[key] = .bool(v)
+                case .text(let v): dict[key] = .string(v)
+                case .progress(let v): dict[key] = .double(v) // 如果你 progress 需要存 double
                 }
 
-            case .enableSound:
-                if case .toggle(let value) = param.type {
-                    cube.soundEn = value
-                }
-
-            case .progress:
-                if case .progress(let value) = param.type {
-                    cube.durationProgressEn = value > 0
-                }
-
-            // MARK: - Tap Count
-            case .tapCount:
-                if case .value(let value) = param.type {
-                    cube.tapCount = value
-                }
-
-            case .tapEnable:
-                if case .toggle(let value) = param.type {
-                    cube.tapCountEn = value
-                }
-
-            case .tapProgress:
-                if case .progress(let value) = param.type {
-                    cube.tapCountProgressEn = value > 0
-                }
-
-            // MARK: - Combo
-            case .loopCount:
-                if case .value(let value) = param.type {
-                    cube.loopCount = value
-                }
-
-            case .autoNextTask:
-                if case .toggle(let value) = param.type {
-                    cube.autoNextTask = value
-                }
+                action.parameters = dict
+                cube.actions[index] = action
             }
         }
     }
@@ -256,7 +135,6 @@ struct CubeActionSettingsView: View {
                     .foregroundColor(.gray)
             } else {
                 ForEach($parameters, id: \.name) { $param in
-                    
                     HStack {
                         Text(param.name).font(.headline)
                         Spacer()

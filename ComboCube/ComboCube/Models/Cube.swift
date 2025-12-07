@@ -1,12 +1,13 @@
 import Foundation
 import SwiftData
 
-// MARK: - Cube Action Type (UI / runtime enum)
-enum CubeActionType: String {
+// MARK: - Cube Action Type
+enum CubeActionType: String, Codable {
     case combo
     case timer
     case countdown
     case repetitions
+    case dice       // 骰子類型
     case none
 
     init(raw: String) {
@@ -14,47 +15,77 @@ enum CubeActionType: String {
     }
 }
 
-// MARK: - Cube Model (SwiftData)
+// MARK: - CodableValue 封裝任意可編碼型別
+enum CodableValue: Codable {
+    case int(Int)
+    case double(Double)
+    case bool(Bool)
+    case string(String)
+
+    init(_ value: any Codable) {
+        switch value {
+        case let v as Int: self = .int(v)
+        case let v as Double: self = .double(v)
+        case let v as Bool: self = .bool(v)
+        case let v as String: self = .string(v)
+        default: self = .string("\(value)")
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let v = try? container.decode(Int.self) { self = .int(v) }
+        else if let v = try? container.decode(Double.self) { self = .double(v) }
+        else if let v = try? container.decode(Bool.self) { self = .bool(v) }
+        else { self = .string(try container.decode(String.self)) }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .int(let v): try container.encode(v)
+        case .double(let v): try container.encode(v)
+        case .bool(let v): try container.encode(v)
+        case .string(let v): try container.encode(v)
+        }
+    }
+
+    var value: any Codable {
+        switch self {
+        case .int(let v): return v
+        case .double(let v): return v
+        case .bool(let v): return v
+        case .string(let v): return v
+        }
+    }
+}
+
+// MARK: - Cube Model
 @Model
 final class Cube {
-
-    // MARK: - Identity
     @Attribute(.unique) var id: UUID
-
-    // MARK: - Cube Information (顯示用)
     @Attribute var title: String
     @Attribute var icon: String
     @Attribute var backgroundColor: String
     @Attribute var notes: String?
-
-    // MARK: - Metadata & Sound (放在 ActionType 上面)
     @Attribute var tags: [String]
     @Attribute var sourceURL: URL?
-    var soundEn: Bool = false
-    var soundURL: URL? = nil
+    @Attribute var actionType: String        // 存 CubeActionType rawValue
+    @Attribute var createdAt: Date
+    @Attribute var updatedAt: Date
 
-    // MARK: - Action Type
-    @Attribute var actionType: String      // 存 enum rawValue
+    // Relationships
+    @Relationship(deleteRule: .nullify)
+    var actions: [CubeAction] = []
+
+    @Relationship(deleteRule: .nullify)
+    var children: [Cube] = []
+
+    // 方便存取 enum
     var type: CubeActionType {
         get { CubeActionType(raw: actionType) }
         set { actionType = newValue.rawValue }
     }
-
-    // MARK: - Timer / Countdown Settings
-    var duration: Double = 0               // 0 表示永遠計數
-    var durationEn: Bool = true
-    var durationProgressEn: Bool = true
-
-    // MARK: - Tap Count Settings
-    var tapCount: Int = 0
-    var tapCountEn: Bool = false
-    var tapCountProgressEn: Bool = false
-
-    // MARK: - Combo Control & Structure
-    var loopCount: Int? = nil              // combo 專用循環次數
-    var autoNextTask: Bool = false         // combo 是否自動切下一 task
-    @Relationship(deleteRule: .nullify)
-    var children: [Cube] = []
 
     // MARK: - Initializer
     init(
@@ -62,121 +93,85 @@ final class Cube {
         icon: String,
         backgroundColor: String,
         notes: String? = nil,
-
         actionType: CubeActionType = .none,
-
-        // Timer
-        duration: Double? = nil,
-        durationEn: Bool = true,
-        durationProgressEn: Bool = true,
-
-        // Tap
-        tapCount: Int? = nil,
-        tapCountEn: Bool = false,
-        tapCountProgressEn: Bool = false,
-
-        // Combo
-        loopCount: Int? = nil,
-        autoNextTask: Bool = false,
-        children: [Cube] = [],
-
-        // Metadata & Sound
         tags: [String] = [],
-        sourceURL: URL? = nil,
-        soundEn: Bool = false,
-        soundURL: URL? = nil
+        sourceURL: URL? = nil
     ) {
         self.id = UUID()
-
-        // Info
         self.title = title
         self.icon = icon
         self.backgroundColor = backgroundColor
         self.notes = notes
-
-        // Meta & Sound
         self.tags = tags
         self.sourceURL = sourceURL
-        self.soundEn = soundEn
-        self.soundURL = soundURL
-
-        // Action
         self.actionType = actionType.rawValue
-
-        // Timer
-        self.duration = duration ?? 0
-        self.durationEn = durationEn
-        self.durationProgressEn = durationProgressEn
-
-        // Tap
-        self.tapCount = tapCount ?? 0
-        self.tapCountEn = tapCountEn
-        self.tapCountProgressEn = tapCountProgressEn
-
-        // Combo
-        self.loopCount = loopCount
-        self.autoNextTask = autoNextTask
-        self.children = children
+        let now = Date()
+        self.createdAt = now
+        self.updatedAt = now
     }
-}
 
-// MARK: - Helpers / Runner Integration
-extension Cube {
-
-    /// 複製 Cube（純資料複製，children 不處理）
+    // MARK: - Helpers
     func copyItem() -> Cube {
         Cube(
-            title: self.title,
-            icon: self.icon,
-            backgroundColor: self.backgroundColor,
-            notes: self.notes,
-            actionType: self.type,
-
-            // Timer / Countdown
-            duration: self.duration,
-            durationEn: self.durationEn,
-            durationProgressEn: self.durationProgressEn,
-
-            // Tap
-            tapCount: self.tapCount,
-            tapCountEn: self.tapCountEn,
-            tapCountProgressEn: self.tapCountProgressEn,
-
-            // Combo
-            loopCount: self.loopCount,
-            autoNextTask: self.autoNextTask,
-
-            // Children
-            children: [],
-
-            // Metadata & Sound
-            tags: self.tags,
-            sourceURL: self.sourceURL,
-            soundEn: self.soundEn,
-            soundURL: self.soundURL
+            title: title,
+            icon: icon,
+            backgroundColor: backgroundColor,
+            notes: notes,
+            actionType: type,
+            tags: tags,
+            sourceURL: sourceURL
         )
     }
 
-    /// 生成對應 Task（Runner 使用）
-    func toTask(runner: CubeRunner) -> CubeTask {
-        switch type {
-        case .combo:
-            return ComboTask(cube: self, runner: runner)
-        case .timer:
-            return TimerTask(cube: self, runner: runner)
-        case .countdown:
-            return CountdownTask(cube: self, runner: runner)
-        case .repetitions:
-            return RepetitionTask(cube: self, runner: runner)
-        case .none:
-            return DummyTask(cube: self, runner: runner)
-        @unknown default:
-            return DummyTask(cube: self, runner: runner)
+    func addAction(_ action: CubeAction) {
+        actions.append(action)
+        updatedAt = Date()
+    }
+}
+
+// MARK: - CubeAction Model
+@Model
+final class CubeAction {
+    @Attribute(.unique) var id: UUID
+    @Attribute var actionType: String
+    @Attribute var parametersData: Data?    // JSON 存動態參數
+    @Attribute var createdAt: Date
+    @Attribute var updatedAt: Date
+
+    // 關聯 Cube
+    @Relationship(deleteRule: .nullify, inverse: \Cube.actions)
+    var cube: Cube?
+
+    // 方便存取 enum
+    var type: CubeActionType {
+        get { CubeActionType(raw: actionType) }
+        set { actionType = newValue.rawValue }
+    }
+
+    // MARK: - Initializer
+    init(type: CubeActionType, parameters: [String: CodableValue]? = nil) {
+        self.id = UUID()
+        self.actionType = type.rawValue
+        let now = Date()
+        self.createdAt = now
+        self.updatedAt = now
+
+        if let params = parameters {
+            self.parametersData = try? JSONEncoder().encode(params)
         }
     }
 
-    /// 只讀 children
-    func childrenList() -> [Cube] {
-        children
+    var parameters: [String: CodableValue]? {
+        get { parametersData.flatMap { try? JSONDecoder().decode([String: CodableValue].self, from: $0) } }
+        set {
+            parametersData = newValue.flatMap { try? JSONEncoder().encode($0) }
+            updatedAt = Date()
+        }
+    }
+
+    // MARK: - Dice Feature
+    func nextActionForDice(possibleActions: [CubeActionType]) -> CubeActionType {
+        guard type == .dice else { return type }
+        return possibleActions.randomElement() ?? .none
     }
 }
