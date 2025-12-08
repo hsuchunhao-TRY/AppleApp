@@ -4,11 +4,12 @@ import SwiftData
 // MARK: - Cube Action Type
 enum CubeActionType: String, Codable {
     case combo
+    case dice
     case timer
     case countdown
     case repetitions
-    case dice       // 骰子類型
     case none
+    case unknown 
 
     init(raw: String) {
         self = CubeActionType(rawValue: raw) ?? .none
@@ -69,19 +70,34 @@ final class Cube {
     @Attribute var backgroundColor: String
     @Attribute var notes: String?
     @Attribute var tags: [String]
-    @Attribute var sourceURL: URL?
-    @Attribute var actionType: String        // 存 CubeActionType rawValue
+    @Attribute var videoURL: URL?
+    @Attribute var actionType: String        // CubeActionType.rawValue
+    @Attribute var actionParameters: Data?   // JSON 結構存動態資料
     @Attribute var createdAt: Date
     @Attribute var updatedAt: Date
 
-    // Relationships
-    @Relationship(deleteRule: .nullify)
-    var actions: [CubeAction] = []
+    @Attribute var childrenData: Data?  // 儲存 [UUID]
 
-    @Relationship(deleteRule: .nullify)
-    var children: [Cube] = []
+    var childrenIDs: [UUID] {
+        get {
+            guard let data = childrenData,
+                  let ids = try? JSONDecoder().decode([UUID].self, from: data) else {
+                return []
+            }
+            return ids
+        }
+        set {
+            childrenData = try? JSONEncoder().encode(newValue)
+        }
+    }
 
-    // 方便存取 enum
+    func appendChild(_ child: Cube) {
+        var ids = childrenIDs
+        ids.append(child.id)
+        childrenIDs = ids
+    }
+    
+    // MARK: - Enum Bridge
     var type: CubeActionType {
         get { CubeActionType(raw: actionType) }
         set { actionType = newValue.rawValue }
@@ -95,7 +111,8 @@ final class Cube {
         notes: String? = nil,
         actionType: CubeActionType = .none,
         tags: [String] = [],
-        sourceURL: URL? = nil
+        videoURL: URL? = nil,
+        actionParameters: [String: CodableValue]? = nil
     ) {
         self.id = UUID()
         self.title = title
@@ -103,15 +120,33 @@ final class Cube {
         self.backgroundColor = backgroundColor
         self.notes = notes
         self.tags = tags
-        self.sourceURL = sourceURL
+        self.videoURL = videoURL
         self.actionType = actionType.rawValue
+
+        if let params = actionParameters {
+            self.actionParameters = try? JSONEncoder().encode(params)
+        } else {
+            self.actionParameters = nil
+        }
+
         let now = Date()
         self.createdAt = now
         self.updatedAt = now
     }
 
-    // MARK: - Helpers
-    func copyItem() -> Cube {
+    // MARK: - JSON Helper
+    var parameters: [String: CodableValue]? {
+        get {
+            actionParameters.flatMap { try? JSONDecoder().decode([String: CodableValue].self, from: $0) }
+        }
+        set {
+            actionParameters = newValue.flatMap { try? JSONEncoder().encode($0) }
+            updatedAt = Date()
+        }
+    }
+
+    // MARK: - Copy
+    func copyItem(preserveParameters: Bool = true) -> Cube {
         Cube(
             title: title,
             icon: icon,
@@ -119,59 +154,24 @@ final class Cube {
             notes: notes,
             actionType: type,
             tags: tags,
-            sourceURL: sourceURL
+            videoURL: videoURL,
+            actionParameters: preserveParameters ? parameters : nil
         )
-    }
-
-    func addAction(_ action: CubeAction) {
-        actions.append(action)
-        updatedAt = Date()
     }
 }
 
-// MARK: - CubeAction Model
-@Model
-final class CubeAction {
-    @Attribute(.unique) var id: UUID
-    @Attribute var actionType: String
-    @Attribute var parametersData: Data?    // JSON 存動態參數
-    @Attribute var createdAt: Date
-    @Attribute var updatedAt: Date
+// MARK: - Cube Factory Example
+struct CubeFactory {
+    static let warmupTemplate = CubeTemplate(
+        title: "熱身 10 分鐘",
+        icon: "🔥",
+        backgroundColor: "#FFA500",
+        tags: ["warmup", "easy"],
+        actionType: .timer,
+        defaultParameters: ["duration": .double(Double(10*60))],
+    )
 
-    // 關聯 Cube
-    @Relationship(deleteRule: .nullify, inverse: \Cube.actions)
-    var cube: Cube?
-
-    // 方便存取 enum
-    var type: CubeActionType {
-        get { CubeActionType(raw: actionType) }
-        set { actionType = newValue.rawValue }
-    }
-
-    // MARK: - Initializer
-    init(type: CubeActionType, parameters: [String: CodableValue]? = nil) {
-        self.id = UUID()
-        self.actionType = type.rawValue
-        let now = Date()
-        self.createdAt = now
-        self.updatedAt = now
-
-        if let params = parameters {
-            self.parametersData = try? JSONEncoder().encode(params)
-        }
-    }
-
-    var parameters: [String: CodableValue]? {
-        get { parametersData.flatMap { try? JSONDecoder().decode([String: CodableValue].self, from: $0) } }
-        set {
-            parametersData = newValue.flatMap { try? JSONEncoder().encode($0) }
-            updatedAt = Date()
-        }
-    }
-
-    // MARK: - Dice Feature
-    func nextActionForDice(possibleActions: [CubeActionType]) -> CubeActionType {
-        guard type == .dice else { return type }
-        return possibleActions.randomElement() ?? .none
+    static func makeWarmupCube() -> Cube {
+        warmupTemplate.makeCube()
     }
 }

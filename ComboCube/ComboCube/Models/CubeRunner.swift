@@ -51,7 +51,7 @@ class BaseTask: CubeTask {
     }
 }
 
-// MARK: - DummyTask
+// MARK: - 任務類型
 class DummyTask: BaseTask {
     override func start() {
         super.start()
@@ -59,24 +59,19 @@ class DummyTask: BaseTask {
     }
 }
 
-// MARK: - TimerTask
 class TimerTask: BaseTask { }
-
-// MARK: - CountdownTask
 class CountdownTask: BaseTask { }
 
-// MARK: - RepetitionTask
 class RepetitionTask: BaseTask {
     override func start() {
         isRunning = true
     }
 }
 
-// MARK: - ComboTask
 class ComboTask: BaseTask {
     override func start() {
         isRunning = true
-        onFinish?()
+        onFinish?()   // ✅ Combo 本身不計時，秒過
     }
 }
 
@@ -90,14 +85,17 @@ class CubeRunner: ObservableObject {
     private var taskQueue: [CubeTask] = []
     private var timerTask: Task<Void, Never>?
 
-    // MARK: Start
+    /// ✅ 所有 Cube 統一由外部灌入（List 頁初始化一次）
+    var cubesByID: [UUID: Cube] = [:]
+
+    // MARK: - Start
     func start(cube: Cube) {
         let rootTask = cube.toTask(runner: self)
         taskQueue = expandTasks(root: rootTask)
         runNextTask()
     }
 
-    // MARK: Run next
+    // MARK: - Run next
     func runNextTask() {
         guard !taskQueue.isEmpty else {
             currentTask = nil
@@ -120,7 +118,7 @@ class CubeRunner: ObservableObject {
         scheduleTimer(for: next)
     }
 
-    // MARK: Timer loop
+    // MARK: - Timer loop
     func scheduleTimer(for task: CubeTask) {
         timerTask?.cancel()
         if task is ComboTask { return }
@@ -154,45 +152,60 @@ class CubeRunner: ObservableObject {
         taskQueue.removeAll()
     }
 
-    // MARK: Combo expand
+    // MARK: - ✅ Combo 展開（正式對齊 childrenIDs）
     func expandTasks(root: CubeTask) -> [CubeTask] {
-        if root is ComboTask {
-            return root.cube.children.flatMap { child in
-                expandTasks(root: child.toTask(runner: self))
+
+        // ✅ Combo → 遞迴展開 childrenIDs
+        if let combo = root as? ComboTask {
+
+            var tasks: [CubeTask] = []
+
+            for id in combo.cube.childrenIDs {
+                guard let childCube = cubesByID[id] else { continue }
+
+                let childTask = childCube.toTask(runner: self)
+                let expanded = expandTasks(root: childTask)
+                tasks.append(contentsOf: expanded)
             }
+
+            return tasks
         }
+
+        // ✅ 非 Combo → 直接回傳
         return [root]
     }
 }
 
-// MARK: - Cube to Task
+// MARK: - Cube → Task 工廠
 extension Cube {
-    func toTask(runner: CubeRunner?) -> CubeTask {
-        guard let action = actions.first else {
-            return DummyTask(cube: self, runner: runner)
-        }
 
-        switch action.type {
+    func toTask(runner: CubeRunner?) -> CubeTask {
+
+        let type = CubeActionType(rawValue: actionType) ?? .unknown
+        let params = parseActionParameters(actionParameters)
+
+        switch type {
+
         case .combo:
             return ComboTask(cube: self, runner: runner)
 
         case .timer:
             let task = TimerTask(cube: self, runner: runner)
-            if let duration = action.parameters?["Duration"], case let .double(d) = duration {
+            if let d = params["duration"] as? Double {
                 task.timeRemaining = d
             }
             return task
 
         case .countdown:
             let task = CountdownTask(cube: self, runner: runner)
-            if let duration = action.parameters?["Duration"], case let .double(d) = duration {
+            if let d = params["duration"] as? Double {
                 task.timeRemaining = d
             }
             return task
 
         case .repetitions:
             let task = RepetitionTask(cube: self, runner: runner)
-            if let tapCount = action.parameters?["Tap Count"], case let .int(c) = tapCount {
+            if let c = params["tapCount"] as? Int {
                 task.timeRemaining = Double(c)
                 task.completedCount = 0
             }
@@ -201,5 +214,16 @@ extension Cube {
         default:
             return DummyTask(cube: self, runner: runner)
         }
+    }
+
+    func parseActionParameters(_ data: Data?) -> [String: Any] {
+        guard
+            let data,
+            let obj = try? JSONSerialization.jsonObject(with: data),
+            let dict = obj as? [String: Any]
+        else {
+            return [:]
+        }
+        return dict
     }
 }

@@ -17,10 +17,10 @@ struct Persistence {
             fatalError("Failed to create ModelContainer: \(error)")
         }
 
-        // 若為 in-memory，可塞入測試資料
-        if inMemory {
-            SeedData.load(into: container.mainContext)
-        }
+//        // 若為 in-memory，可塞入測試資料
+//        if inMemory {
+//            SeedData.load(into: container.mainContext)
+//        }
     }
 
     static var preview: ModelContainer {

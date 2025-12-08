@@ -8,21 +8,115 @@ struct CubeEditView: View {
     @State private var selectedAction: CubeActionType
     @State private var parameters: [CubeActionParameter] = []
 
+    // 上半部資料
     @State private var icon: String
     @State private var title: String
+    @State private var selectedTags: [String]
+    @State private var notes: String
     @State private var backgroundColor: Color
+
+    // 預設選項
+    private let availableIcons = [
+        "flame.fill", "bolt.fill", "star.fill", "timer", "clock.fill",
+        "bicycle", "figure.walk", "figure.yoga", "book.fill", "pencil", "sun.max.fill", "moon.fill"
+    ]
+    private let availableTags = ["Workout", "Study", "Focus", "Fun"]
+    private let backgroundOptions: [Color] = [.yellow, .orange, .blue, .green, .pink]
 
     var body: some View {
         VStack(spacing: 0) {
-            // 上半部：Icon + Title + 背景色
-            VStack(spacing: 16) {
-                TextField("Icon", text: $icon)
-                    .font(.system(size: 60))
-                    .multilineTextAlignment(.center)
+            // 上半部 Cube 資訊卡
+            VStack(spacing: 12) {
 
-                TextField("Title", text: $title)
-                    .font(.title)
-                    .multilineTextAlignment(.center)
+                // 左上 tags
+                HStack {
+                    Text(selectedTags.isEmpty ? "" : selectedTags.joined(separator: ", "))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+
+                // 中央 icon + title + notes + 背景色選擇
+                VStack(spacing: 16) {
+                    // Icon 選擇
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(availableIcons, id: \.self) { name in
+                                Button {
+                                    icon = name
+                                } label: {
+                                    Image(systemName: name)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 30, height: 30) // 跟背景色圓形大小一致
+                                        .padding(6)
+                                        .background(icon == name ? Color.white.opacity(0.3) : Color.clear)
+                                        .cornerRadius(15)
+                                }
+                            }
+                        }
+                    }
+
+                    // Title
+                    TextField("Title", text: $title)
+                        .font(.title)
+                        .multilineTextAlignment(.center)
+
+                    // Notes
+                    VStack(spacing: 4) {
+                        TextField("Notes", text: Binding(
+                            get: { notes },
+                            set: { newValue in
+                                if newValue.count <= 20 {
+                                    notes = newValue
+                                } else {
+                                    // 超過 20 字，保留前 20 個
+                                    notes = String(newValue.prefix(20))
+                                }
+                            }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .font(.footnote)
+
+                        if notes.count >= 20 {
+                            Text("最多20字")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                    }
+
+
+                    // 背景色選擇 Button
+                    HStack(spacing: 12) {
+                        ForEach(backgroundOptions, id: \.self) { color in
+                            Button(action: { backgroundColor = color }) {
+                                Circle()
+                                    .fill(color)
+                                    .frame(width: 30, height: 30)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: backgroundColor == color ? 3 : 0)
+                                    )
+                            }
+                        }
+                    }
+                }
+
+                Spacer()
+
+                // 左下 action type + 右下 updatedAt
+                HStack {
+                    Text(cube.type.rawValue.capitalized)
+                        .font(.caption)
+                        .bold()
+
+                    Spacer()
+
+                    Text(cube.updatedAt.formatted(.dateTime.year().month().day()))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             .frame(maxHeight: .infinity)
             .padding()
@@ -30,40 +124,56 @@ struct CubeEditView: View {
 
             Divider()
 
-            // 下半部：Action 設定
+            // 下半部 Form：Parameters + Tags + Save
             Form {
-                Section(header: Text("Action Type")) {
-                    Picker("Action Type", selection: $selectedAction) {
-                        Text("Combo").tag(CubeActionType.combo)
-                        Text("Timer").tag(CubeActionType.timer)
-                        Text("Countdown").tag(CubeActionType.countdown)
-                        Text("Repetitions").tag(CubeActionType.repetitions)
-                        Text("None").tag(CubeActionType.none)
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: selectedAction) {oldValue, newValue in
-                        loadParameters(for: newValue)
+                if let template = cubeTemplates.first(where: { $0.actionType == cube.type }),
+                   let actionParams = template.defaultParameters {
+                    Section {
+                        CubeActionSettingsView(
+                            action: cube.type,
+                            parameters: $parameters,
+                            isEditable: true
+                        )
+                        .background(backgroundColor.opacity(0.3))
+                        .onAppear {
+                            parameters = actionParams.map { key, value in
+                                let type: CubeActionParameterType
+                                switch value {
+                                case .int(let v): type = .value(v)
+                                case .double(let v): type = .time(v)
+                                case .bool(let v): type = .toggle(v)
+                                case .string(let v): type = .text(v)
+                                }
+                                return CubeActionParameter(name: key, type: type, used: true, isHidden: false)
+                            }
+                        }
                     }
                 }
 
-                if !parameters.isEmpty {
-                    Section(header: Text("Parameters")) {
-                        CubeActionSettingsView(action: selectedAction, parameters: $parameters, isEditable: true)
-                    }
-                }
 
+
+
+                // Save Button
                 Button("Save") {
                     cube.title = title
                     cube.icon = icon
                     cube.type = selectedAction
+                    cube.tags = selectedTags
+                    cube.notes = notes
+                    cube.backgroundColor = backgroundColor.toHex() ?? "#FFBF00"
                     applyParametersToCube()
                     dismiss()
                 }
             }
+            .scrollContentBackground(.hidden) // 隱藏 Form 系統背景
+            // 整個 Form 背景較亮
+            .background(backgroundColor.opacity(0.3))
             .onAppear {
                 icon = cube.icon
                 title = cube.title
                 selectedAction = cube.type
+                selectedTags = cube.tags
+                notes = cube.notes ?? ""
                 backgroundColor = Color(hex: cube.backgroundColor)
                 loadParameters(for: selectedAction)
             }
@@ -72,11 +182,14 @@ struct CubeEditView: View {
 
     // MARK: - Helpers
     private func loadParameters(for actionType: CubeActionType) {
-        if let action = cube.actions.first(where: { $0.type == actionType }),
-           let parametersDict = action.parameters {
-            parameters = parametersDict.map { pair in
-                let key = pair.key
-                let value = pair.value
+        guard let data = cube.actionParameters else {
+            parameters = []
+            return
+        }
+
+        do {
+            let parametersDict = try JSONDecoder().decode([String: CodableValue].self, from: data)
+            parameters = parametersDict.map { key, value in
                 let type: CubeActionParameterType
                 switch value {
                 case .int(let v): type = .value(v)
@@ -86,38 +199,42 @@ struct CubeEditView: View {
                 }
                 return CubeActionParameter(name: key, type: type, used: true, isHidden: false)
             }
-        } else {
+        } catch {
+            print("❌ Failed to decode actionParameters: \(error)")
             parameters = []
         }
     }
 
     private func applyParametersToCube() {
+        var updatedDict: [String: CodableValue] = [:]
+
+        // 將 CubeActionParameter 轉回 CodableValue
         for param in parameters {
-            let key = param.name
-
-            if let index = cube.actions.firstIndex(where: { $0.type == selectedAction }) {
-                let action = cube.actions[index]
-                var dict = action.parameters ?? [:]
-
-                switch param.type {
-                case .value(let v): dict[key] = .int(v)
-                case .time(let v): dict[key] = .double(v)
-                case .toggle(let v): dict[key] = .bool(v)
-                case .text(let v): dict[key] = .string(v)
-                case .progress(let v): dict[key] = .double(v) // 如果你 progress 需要存 double
-                }
-
-                action.parameters = dict
-                cube.actions[index] = action
+            switch param.type {
+            case .value(let v): updatedDict[param.name] = .int(v)
+            case .time(let v): updatedDict[param.name] = .double(v)
+            case .toggle(let v): updatedDict[param.name] = .bool(v)
+            case .text(let v): updatedDict[param.name] = .string(v)
+            case .progress(let v): updatedDict[param.name] = .double(v)
             }
         }
-    }
 
+        do {
+            let data = try JSONEncoder().encode(updatedDict)
+            cube.actionParameters = data
+        } catch {
+            print("❌ Failed to encode actionParameters: \(error)")
+        }
+    }
+    
+    // MARK: - Init
     init(cube: Cube) {
         _cube = State(initialValue: cube)
         _selectedAction = State(initialValue: cube.type)
         _icon = State(initialValue: cube.icon)
         _title = State(initialValue: cube.title)
+        _selectedTags = State(initialValue: cube.tags)
+        _notes = State(initialValue: cube.notes ?? "")
         _backgroundColor = State(initialValue: Color(hex: cube.backgroundColor))
     }
 }
