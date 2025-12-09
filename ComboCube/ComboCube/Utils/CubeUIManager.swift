@@ -106,25 +106,27 @@ class CubeUIManager {
 extension CubeUIManager {
 
     // MARK: - 顏色陣列
+    static let backgroundOptions: [Color] = [.yellow, .orange, .blue, .green, .pink, Color(hex: "#FF4500")]
     static let colors: [Color] = [
-        Color(hex: "#FF4500"), // fitness 橘紅
-        Color(hex: "#8B4513"), // strength 棕
-        Color(hex: "#2E8B57"), // walking 綠
-        Color(hex: "#FF6347"), // running 番茄紅
-        Color(hex: "#1E90FF"), // cycling 藍
-        Color(hex: "#9400D3"), // spinning 紫
-        Color(hex: "#FFD700"), // jumpRope 金
-        Color(hex: "#00CED1"), // yoga 深青
-        Color(hex: "#FF1493"), // cardio 粉紅
-        Color(hex: "#FF69B4"), // dice 熱粉
-        Color(hex: "#00FF7F"), // game 淺綠
-        Color(hex: "#708090"), // study 灰藍
-        Color(hex: "#F5DEB3"), // reading 小麥色
-        Color(hex: "#9370DB"), // meditation 紫水晶
-        Color(hex: "#1E90FF"), // swimming 藍
-        Color(hex: "#556B2F"), // hiking 橄欖綠
-        Color(hex: "#FF8C00"), // music 深橘
-        Color(hex: "#DC143C")  // cooking 猩紅
+//        .yellow,
+        Color(hex: "#FF4500"), // 橘紅
+        Color(hex: "#8B4513"), // 棕
+        Color(hex: "#2E8B57"), // 綠
+        Color(hex: "#FF6347"), // 番茄紅
+        Color(hex: "#1E90FF"), // 藍
+        Color(hex: "#9400D3"), // 紫
+        Color(hex: "#FFD700"), // 金
+        Color(hex: "#00CED1"), // 深青
+        Color(hex: "#FF1493"), // 粉紅
+        Color(hex: "#FF69B4"), // 熱粉
+        Color(hex: "#00FF7F"), // 淺綠
+        Color(hex: "#708090"), // 灰藍
+        Color(hex: "#F5DEB3"), // 小麥色
+        Color(hex: "#9370DB"), // 紫水晶
+        Color(hex: "#1E90FF"), // 藍
+        Color(hex: "#556B2F"), // 橄欖綠
+        Color(hex: "#FF8C00"), // 深橘
+        Color(hex: "#DC143C")  // 猩紅
     ]
 
     // MARK: - Icon 陣列 (SF Symbols)
@@ -148,4 +150,210 @@ extension CubeUIManager {
         "music.note",                           // music
         "fork.knife"                            // cooking
     ]
+}
+
+// MARK: - 定義 Cube 模板 for action
+let cubeTemplates: [CubeTemplate] = [
+
+    CubeTemplate(
+        title: CubeActionType.combo.rawValue,
+        icon: CubeUIManager.shared.getIcon(for: CubeActionType.combo),
+        backgroundColor: CubeUIManager.shared.getColor(for: CubeActionType.combo).toHex() ?? "#FFBF00",
+        tags: [],
+        actionType: CubeActionType.combo,
+        defaultParameters: [
+            "loopCount": .int(1),
+            "autoNextTask": .bool(false),
+            "children": .string("[]") // 空陣列
+        ]
+    ),
+    
+    CubeTemplate(
+        title: CubeActionType.dice.rawValue,
+        icon: CubeUIManager.shared.getIcon(for: CubeActionType.dice),
+        backgroundColor: CubeUIManager.shared.getColor(for: CubeActionType.dice).toHex() ?? "#8A2BE2",
+        tags: [],
+        actionType: CubeActionType.dice,
+        defaultParameters: [
+            "children": .string("[]") // 空陣列
+        ]
+    ),
+
+    CubeTemplate(
+        title: CubeActionType.timer.rawValue,
+        icon: CubeUIManager.shared.getIcon(for: CubeActionType.timer),
+        backgroundColor: CubeUIManager.shared.getColor(for: CubeActionType.timer).toHex() ?? "#00BFFF",
+        tags: [],
+        actionType: CubeActionType.timer,
+        defaultParameters: [
+            "duration": .double(60)
+        ]
+    ),
+
+    CubeTemplate(
+        title: CubeActionType.countdown.rawValue,
+        icon: CubeUIManager.shared.getIcon(for: CubeActionType.countdown),
+        backgroundColor: CubeUIManager.shared.getColor(for: CubeActionType.countdown).toHex() ?? "#FF6347",
+        tags: [],
+        actionType: CubeActionType.countdown,
+        defaultParameters: [
+            "duration": .double(60)
+        ]
+    ),
+
+    CubeTemplate(
+        title: CubeActionType.repetitions.rawValue,
+        icon: CubeUIManager.shared.getIcon(for: CubeActionType.repetitions),
+        backgroundColor: CubeUIManager.shared.getColor(for: CubeActionType.repetitions).toHex() ?? "#32CD32",
+        tags: [],
+        actionType: CubeActionType.repetitions,
+        defaultParameters: [
+            "tapCount": .int(0)
+        ]
+    ),
+
+    CubeTemplate(
+        title: CubeActionType.none.rawValue,
+        icon: CubeUIManager.shared.getIcon(for: CubeActionType.none),
+        backgroundColor: CubeUIManager.shared.getColor(for: CubeActionType.none).toHex() ?? "#D3D3D3",
+        tags: [],
+        actionType: CubeActionType.none,
+        defaultParameters: [:]
+    )
+]
+
+
+import Foundation
+
+// MARK: - 全域 CubeTemplate 管理器
+struct CubeTemplateLibrary {
+
+    // MARK: - 單例（可選）
+    static let shared = CubeTemplateLibrary()
+
+    // MARK: - 定義各種模板
+    let warmup10s: CubeTemplate
+    let hiit1min: CubeTemplate
+    let comboInterval: CubeTemplate
+    let warmup10min: CubeTemplate
+    let climb6_10km: CubeTemplate
+    let comboClimb: CubeTemplate
+    let cadence95rpm: CubeTemplate
+    let warmup10min2: CubeTemplate
+    let comboCadence: CubeTemplate
+    let dice: CubeTemplate
+
+    // MARK: - 初始化模板
+    private init() {
+        warmup10s = CubeTemplate(
+            title: "熱身 10 秒",
+            icon: "🔥",
+            backgroundColor: "#FFA500",
+            tags: ["warmup", "easy"],
+            actionType: .timer,
+            defaultParameters: ["duration": .double(10)]
+        )
+
+        hiit1min = CubeTemplate(
+            title: "高強度間歇 1 分鐘",
+            icon: "⚡️",
+            backgroundColor: "#FF0000",
+            tags: ["interval", "hiit"],
+            actionType: .timer,
+            defaultParameters: ["duration": .double(60)]
+        )
+
+        comboInterval = CubeTemplate(
+            title: "間歇訓練",
+            icon: "⚡️",
+            backgroundColor: "#FFBF00",
+            tags: ["combo", "hiit"],
+            actionType: .combo,
+            defaultParameters: [
+                "loopCount": .int(1),
+                "autoNextTask": .bool(true)
+            ]
+        )
+
+        warmup10min = CubeTemplate(
+            title: "熱身 10 分鐘",
+            icon: "🔥",
+            backgroundColor: "#FFA500",
+            tags: ["warmup", "easy"],
+            actionType: .timer,
+            defaultParameters: ["duration": .double(10.0*60.0)]
+        )
+
+        climb6_10km = CubeTemplate(
+            title: "爬坡 6–10km",
+            icon: "⛰️",
+            backgroundColor: "#00FF00",
+            tags: ["climb", "strength"],
+            actionType: .timer,
+            defaultParameters: ["duration": .double(20.0*60.0)]
+        )
+
+        comboClimb = CubeTemplate(
+            title: "爬坡肌耐力",
+            icon: "⛰️",
+            backgroundColor: "#919E71",
+            tags: ["combo", "climb"],
+            actionType: .combo,
+            defaultParameters: [
+                "loopCount": .int(1),
+                "autoNextTask": .bool(true)
+            ]
+        )
+
+        cadence95rpm = CubeTemplate(
+            title: "踩踏節奏 95rpm",
+            icon: "🎵",
+            backgroundColor: "#0000FF",
+            tags: ["cadence", "rhythm"],
+            actionType: .timer,
+            defaultParameters: ["duration": .double(15.0*60.0)]
+        )
+
+        warmup10min2 = CubeTemplate(
+            title: "熱身 10 分鐘",
+            icon: "🔥",
+            backgroundColor: "#FFA500",
+            tags: ["warmup", "easy"],
+            actionType: .timer,
+            defaultParameters: ["duration": .double(10.0*60.0)]
+        )
+
+        comboCadence = CubeTemplate(
+            title: "踩踏節奏提升",
+            icon: "🎵",
+            backgroundColor: "#CAC5DD",
+            tags: ["combo", "cadence"],
+            actionType: .combo,
+            defaultParameters: [
+                "loopCount": .int(1),
+                "autoNextTask": .bool(true)
+            ]
+        )
+
+        dice = CubeTemplate(
+            title: "隨機訓練",
+            icon: "🎲",
+            backgroundColor: "#FF69B4",
+            tags: ["dice"],
+            actionType: .dice,
+            defaultParameters: [
+                "possibleActions": .string("timer,countdown,repetitions")
+            ]
+        )
+    }
+
+    // MARK: - 方便群組
+    var allTemplates: [CubeTemplate] {
+        [
+            warmup10s, hiit1min, comboInterval,
+            warmup10min, climb6_10km, comboClimb,
+            cadence95rpm, warmup10min2, comboCadence,
+            dice
+        ]
+    }
 }
